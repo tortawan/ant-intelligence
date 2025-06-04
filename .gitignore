@@ -1,0 +1,35 @@
+# Ignore build outputs
+x64/
+ConsoleApp_ffmpeg/x64/
+
+# Ignore Visual Studio temporary and build files
+*.obj
+*.iobj
+*.ipdb
+*.pdb
+*.tlog/
+*.log
+*.lastbuildstate
+*.recipe
+*.FileListAbsolute.txt
+
+# Ignore user-specific settings
+*.user
+
+# Ignore binaries and executables
+*.exe
+*.dll
+*.mp4
+
+# Ignore CSV outputs and intermediate data
+*.csv
+
+# Ignore backup or saved code folders if not needed
+save_code/
+
+# Ignore sln and vcxproj if you want to keep only source code
+# (optional, comment out if needed)
+# *.sln
+# *.vcxproj
+# *.vcxproj.filters
+.vs/
