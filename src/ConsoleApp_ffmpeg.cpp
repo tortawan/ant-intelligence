@@ -13,9 +13,9 @@
 #include <windows.h>
 #include <cstdlib>
 #include <memory>
-#include "Ant.h"
-#include "Ground.h"
-#include "Objects.h"
+#include "ant_intelligence/Ant.h"
+#include "ant_intelligence/Ground.h"
+#include "ant_intelligence/Objects.h"
 
 // Function to set thread affinity to performance cores
 bool SetThreadAffinityToPerformanceCores() {
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     int threshold_end = 20;         // New: End similarity threshold
     int threshold_interval = 2;     // New: Interval for similarity threshold sweep
     std::vector<double> prob_relu = { 0.3, 0.5 };
-    bool enable_visual = false;
+    bool enable_visual = true;
     std::string csvFilename = "ground_data.csv";  // Default CSV filename
 
 

@@ -15,24 +15,24 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ConsoleApp_ffmpeg.cpp">
+    <ClCompile Include="..\src\Ant.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Ant.cpp">
+    <ClCompile Include="..\src\ConsoleApp_ffmpeg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Ground.cpp">
+    <ClCompile Include="..\src\Ground.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Ant.h">
+    <ClInclude Include="..\include\ant_intelligence\Ant.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Ground.h">
+    <ClInclude Include="..\include\ant_intelligence\Ground.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Objects.h">
+    <ClInclude Include="..\include\ant_intelligence\Objects.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Ant.h"
-#include "Objects.h"
+#include "ant_intelligence/Ant.h"
+#include "ant_intelligence/Objects.h"
 #include <vector>
 #include <unordered_map>
 #include <opencv2/opencv.hpp>

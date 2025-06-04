@@ -1,4 +1,4 @@
-#include "Ground.h"
+#include "ant_intelligence/Ground.h"
 #include <random>
 #include <algorithm>
 #include <numeric>
@@ -8,7 +8,7 @@
 #include <unordered_set>
 #include <stdexcept>  // For std::invalid_argument
 #include <cstdlib>
-#include "Objects.h"
+#include "ant_intelligence/Objects.h"
 
 // Constructor: Build adjacency list of possible positions
 Ground::Ground(int width,
