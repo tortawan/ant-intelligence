@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     int threshold_end = 20;         // New: End similarity threshold
     int threshold_interval = 2;     // New: Interval for similarity threshold sweep
     std::vector<double> prob_relu = { 0.3, 0.5 };
-    bool enable_visual = true;
+    bool enable_visual = false;
     std::string csvFilename = "ground_data.csv";  // Default CSV filename
 
 
@@ -105,6 +105,17 @@ int main(int argc, char* argv[]) {
             else if (arg == "--csv_filename") { // New parameter
                 csvFilename = argv[i + 1];
             }
+            else if (arg == "--video") {
+                std::string val = argv[i + 1];
+                if (val == "true" || val == "1") {
+                    enable_visual = true;
+                }
+                else if (val == "false" || val == "0") {
+                    enable_visual = false;
+                }
+            }
+
+
         }
     }
 
