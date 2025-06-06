@@ -1,0 +1,31 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a//dev/null b/include/ant_intelligence/Utils.h
+index 0000000000000000000000000000000000000000..a8883eaf7d67efbdc909780ac993c85bce52402f 100644
+--- a//dev/null
++++ b/include/ant_intelligence/Utils.h
+@@ -0,0 +1,22 @@
++#pragma once
++
++/**
++ * @file Utils.h
++ * @brief Utility structures and helper functions used across the project.
++ */
++
++#include <utility>
++#include <functional>
++
++/**
++ * @struct pair_hash
++ * @brief Hash function for std::pair to use in unordered containers.
++ */
++struct pair_hash {
++    template <class T1, class T2>
++    std::size_t operator()(const std::pair<T1, T2>& pair) const {
++        // A simple combination of hashes for a pair
++        return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
++    }
++};
++
+ 
+EOF
+)
