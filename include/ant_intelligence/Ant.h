@@ -1,5 +1,10 @@
 #pragma once
 
+/**
+ * @file Ant.h
+ * @brief Definition of the Ant agent used in the simulation.
+ */
+
 #include <utility>
 #include <vector>
 #include <unordered_set>
@@ -25,40 +30,73 @@ struct pair_hash {
     }
 };
 
+/**
+ * @class Ant
+ * @brief Agent that moves around the grid and interacts with objects.
+ */
 class Ant {
 public:
-    // Constructor
-    // 'recordPath' enables storing visited positions
+    /**
+     * @brief Construct a new Ant
+     *
+     * @param position     Initial position on the grid
+     * @param width        Grid width
+     * @param length       Grid length
+     * @param recordPath   Whether to record visited positions
+     * @param memorySize   Capacity of the internal memory
+     */
     Ant(std::pair<int, int> position = { -1, -1 },
         int width = 0,
         int length = 0,
         bool recordPath = false,
         int memorySize = 20);
 
-    // Movement function: chooses a direction based on the provided probabilities
+    /**
+     * @brief Move the ant according to the probability distribution.
+     *
+     * @param possiblePositions  Map of valid neighbor cells for every grid cell.
+     * @param probabilities      Probability for choosing each of the 8 directions.
+     */
     void move(
         const std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_hash>& possiblePositions,
-        const std::vector<double>& probabilities
-    );
+        const std::vector<double>& probabilities);
 
-    // Getters
+    /** @name Getters */
+    ///@{
+    /** @brief Current position of the ant */
     std::pair<int, int> getPosition() const;
-    std::shared_ptr<Object> getLoad() const; // The object the ant is carrying, if any
+    /** @brief Object the ant is currently carrying */
+    std::shared_ptr<Object> getLoad() const;
+    /** @brief Collection of visited grid positions */
     const std::unordered_set<std::pair<int, int>, pair_hash>& getVisitedPositions() const;
+    /** @brief Sequence of recently seen objects */
     const std::vector<int>& getMemory() const;
+    /** @brief Steps remaining before the ant can interact again */
     int getInteractionCooldown() const;
+    /** @brief Previous movement direction */
     int getPrevDirection() const;
+    ///@}
 
-    // Setters
+    /** @name Setters */
+    ///@{
+    /** @brief Set the object carried by the ant */
     void setLoad(std::shared_ptr<Object> newLoad);
+    /** @brief Enable or disable path recording */
     void setRecordPath(bool record);
+    /** @brief Adjust the interaction cooldown */
     void setInteractionCooldown(int cooldown);
+    /** @brief Explicitly set the previous movement direction */
     void setPrevDirection(int newDir);
+    ///@}
 
-    // New: Serialize memory to a comma-separated string
+    /**
+     * @brief Serialize the internal memory to a comma separated string.
+     */
     std::string getMemoryString() const;
 
-    // Updates memory based on encountered object
+    /**
+     * @brief Update memory with information about a seen object.
+     */
     void updateMemory(std::shared_ptr<Object> seenObject);
 
 private:
@@ -95,13 +133,22 @@ private:
     // Interaction cooldown: steps remaining until ant can interact again
     int interactionCooldown;
 
-    // Helpers
-    void updateMovementDict();          // Initializes movementDict
-    int getRandomDirection();           // Picks a random direction 0..7
+    /** @name Helper functions */
+    ///@{
+    /** @brief Initialise the movement dictionary */
+    void updateMovementDict();
+    /** @brief Pick a random direction in range [0,7] */
+    int getRandomDirection();
+    /**
+     * @brief Pick a direction using weighted probabilities.
+     *
+     * The distribution is rotated based on the previous direction to introduce
+     * inertia in movement.
+     */
     int getRandomWeightedDirection(
         const std::vector<double>& probabilities,
-        int prevDirection
-    ); // Weighted random direction
+        int prevDirection);
+    ///@}
 
     
 };

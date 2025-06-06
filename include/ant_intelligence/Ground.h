@@ -1,5 +1,10 @@
 #pragma once
 
+/**
+ * @file Ground.h
+ * @brief Environment where ants and objects reside.
+ */
+
 #include "ant_intelligence/Ant.h"
 #include "ant_intelligence/Objects.h"
 #include <vector>
@@ -8,26 +13,48 @@
 #include <memory>
 #include <unordered_set>
 
+/**
+ * @class Ground
+ * @brief Discrete grid that manages ants and objects.
+ */
 class Ground {
 public:
+    /**
+     * @brief Construct a new Ground
+     *
+     * @param width               Grid width
+     * @param length              Grid length
+     * @param probabilities       Movement probabilities for ants
+     * @param probRelu            Range used in interaction probability
+     * @param similarityThreshold Number of matching memory items needed for interaction
+     */
     Ground(int width,
         int length,
         const std::vector<double>& probabilities = std::vector<double>(8, 1.0 / 8),
         const std::vector<double>& probRelu = { 0.0, 0.5 },
         int similarityThreshold = 2);
 
+    /** @brief Create an ant and place it randomly on the ground */
     void addAnt(int memorySize = 20);
+    /** @brief Fill the ground with objects according to the distribution */
     void addObject(const std::unordered_map<std::shared_ptr<Object>, double>& objDict);
+    /** @brief Move all ants one step */
     void moveAnts();
+    /** @brief Handle picking up and dropping objects */
     void assignWork();
+    /** @brief Compute the average size of object clusters */
     double averageClusterSize();
+    /** @brief Visualize the ground using OpenCV */
     void showGround(const std::string& windowName, cv::VideoWriter& video) const;
+    /** @brief Print a count of all objects */
     void countObjects() const;
+    /** @brief Access the underlying ant vector */
     const std::vector<Ant>& getAgents() const;
+    /** @brief Check neighboring ants and update interaction counts */
     void handleAntInteractions(int currentIteration);
 
 
-    // Getter for interaction counter
+    /** @brief Number of interactions detected so far */
     int getInteractionCount() const { return interactionCounter; }
 
 private:
@@ -42,20 +69,28 @@ private:
 
     int interactionCounter = 0;  // Counter for successful interactions
 
+    /** @brief Pre-compute neighbour cells for each grid position */
     std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_hash> getPossiblePositions();
+    /** @brief Pick a random valid grid cell */
     std::pair<int, int> getRandomPosition();
+    /**
+     * @brief Pick an object type according to the provided distribution.
+     */
     std::shared_ptr<Object> getRandomObject(
         const std::vector<std::shared_ptr<Object>>& keys,
-        const std::vector<double>& values
-    );
+        const std::vector<double>& values);
 
+    /** @brief Simple linear activation used for probabilities */
     double reluRange(double x, double a, double b);
 
+    /**
+     * @brief Breadth-first search to compute cluster sizes.
+     */
     double bfsCluster(
         const std::pair<int, int>& startPos,
         std::shared_ptr<Object> targetObj,
-        std::unordered_set<std::pair<int, int>, pair_hash>& visitedLocations
-    );
+        std::unordered_set<std::pair<int, int>, pair_hash>& visitedLocations);
 
+    /** @brief Count neighbouring cells that contain the same object type */
     int countNeighbors(const std::pair<int, int>& pos, std::shared_ptr<Object> objType);
 };
