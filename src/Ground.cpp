@@ -1,3 +1,13 @@
+// In Ground.cpp
+
+/**
+ * @brief For each ant, determines if it should pick up, drop, or swap an object.
+ *
+ * The core logic is probabilistic. An ant is more likely to drop an object
+ * it's carrying if it's surrounded by many similar objects. Conversely, it's more
+ * likely to pick up an object if it's in a sparse area with few similar neighbors.
+ * This emergent behavior leads to the formation of clusters.
+ */
 #include "ant_intelligence/Ground.h"
 #include <random>
 #include <algorithm>

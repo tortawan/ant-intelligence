@@ -1,4 +1,34 @@
-#define NOMINMAX  
+/**
+ * @file ConsoleApp_ffmpeg.cpp
+ * @brief Main executable for running the ant intelligence simulation.
+ *
+ * This application initializes a Ground, populates it with ants and objects,
+ * and runs the simulation for a specified number of iterations over multiple
+ * experimental runs. It sweeps through different 'similarityThreshold' values
+ * to test their effect on object clustering.
+ *
+ * The results, including average cluster size and interaction counts, are
+ * logged to a CSV file for later analysis.
+ *
+ * @section usage Usage
+ * The program is controlled via command-line arguments:
+ * --width <int>                Width of the simulation grid.
+ * --length <int>               Length of the simulation grid.
+ * --ants <int>                 Number of ants in the simulation.
+ * --experiments <int>          Number of times to run the simulation for each threshold.
+ * --iterations <int>           Number of steps in each simulation run.
+ * --memory_size <int>          The memory capacity of each ant.
+ * --threshold_start <int>      The starting value for the similarity threshold sweep.
+ * --threshold_end <int>        The ending value for the similarity threshold sweep.
+ * --threshold_interval <int>   The step size for the threshold sweep.
+ * --prob_relu_low <float>      The lower bound for the pick/drop probability function.
+ * --prob_relu_high <float>     The upper bound for the pick/drop probability function.
+ * --csv_filename <string>      Name of the output data file.
+ * --video <true|false>         Enable or disable video recording of the simulation.
+ */
+
+#define NOMINMAX
+
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <unordered_map>
