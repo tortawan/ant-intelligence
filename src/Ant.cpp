@@ -1,5 +1,6 @@
 #include "ant_intelligence/Ant.h"
 #include "ant_intelligence/Objects.h"
+#include "ant_intelligence/Config.h"
 #include <algorithm>
 #include <random>
 #include <chrono>
@@ -27,7 +28,7 @@ void Ant::move(
 ) {
     if (possiblePositions.find(position) != possiblePositions.end()) {
         auto nextStepsList = possiblePositions.at(position);
-        if (nextStepsList.size() == 8) {
+        if (nextStepsList.size() == AIConfig::NUM_DIRECTIONS) {
             int newDirection = getRandomWeightedDirection(probabilities, prevDirection);
             auto dx_dy = movementDict[newDirection];
             position.first += dx_dy.first;
@@ -89,14 +90,14 @@ void Ant::setPrevDirection(int newDir) {
 
 void Ant::updateMovementDict() {
     movementDict = {
-        {0, { 0, -1}}, // North
-        {1, { 1, -1}}, // Northeast
-        {2, { 1,  0}}, // East
-        {3, { 1,  1}}, // Southeast
-        {4, { 0,  1}}, // South
-        {5, {-1,  1}}, // Southwest
-        {6, {-1,  0}}, // West
-        {7, {-1, -1}}  // Northwest
+        {static_cast<int>(AIConfig::Direction::North),      { 0, -1}},
+        {static_cast<int>(AIConfig::Direction::NorthEast),  { 1, -1}},
+        {static_cast<int>(AIConfig::Direction::East),       { 1,  0}},
+        {static_cast<int>(AIConfig::Direction::SouthEast),  { 1,  1}},
+        {static_cast<int>(AIConfig::Direction::South),      { 0,  1}},
+        {static_cast<int>(AIConfig::Direction::SouthWest),  {-1,  1}},
+        {static_cast<int>(AIConfig::Direction::West),       {-1,  0}},
+        {static_cast<int>(AIConfig::Direction::NorthWest),  {-1, -1}}
     };
     invMovementDict.clear();
     for (const auto& kv : movementDict) {
@@ -107,7 +108,9 @@ void Ant::updateMovementDict() {
 int Ant::getRandomDirection() {
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 7);
+    std::uniform_int_distribution<> dis(
+        0,
+        static_cast<int>(AIConfig::Direction::NorthWest));
     return dis(gen);
 }
 
@@ -126,23 +129,24 @@ void Ant::updateMemory(std::shared_ptr<Object> seenObject) {
     if (!seenObject) {
         return;
     }
-    int objectType = 0;
+    AIConfig::ObjectType objectType = AIConfig::ObjectType::None;
     if (std::dynamic_pointer_cast<Food>(seenObject)) {
-        objectType = 1;
+        objectType = AIConfig::ObjectType::Food;
     }
     else if (std::dynamic_pointer_cast<Waste>(seenObject)) {
-        objectType = 2;
+        objectType = AIConfig::ObjectType::Waste;
     }
     else if (std::dynamic_pointer_cast<Egg>(seenObject)) {
-        objectType = 3;
+        objectType = AIConfig::ObjectType::Egg;
     }
-    if (objectType != 0) {
+    if (objectType != AIConfig::ObjectType::None) {
+        int objectTypeInt = static_cast<int>(objectType);
         if (memory.size() >= memorySize) {
             std::rotate(memory.begin(), memory.begin() + 1, memory.end());
-            memory.back() = objectType;
+            memory.back() = objectTypeInt;
         }
         else {
-            memory.push_back(objectType);
+            memory.push_back(objectTypeInt);
         }
     }
 }

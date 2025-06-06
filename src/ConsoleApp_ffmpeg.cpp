@@ -46,6 +46,7 @@
 #include "ant_intelligence/Ant.h"
 #include "ant_intelligence/Ground.h"
 #include "ant_intelligence/Objects.h"
+#include "ant_intelligence/Config.h"
 
 // Function to set thread affinity to performance cores
 bool SetThreadAffinityToPerformanceCores() {
@@ -79,16 +80,16 @@ int main(int argc, char* argv[]) {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     // Default values
-    int ground_width = 200;
-    int ground_length = 160;
-    int num_ants = 100;
-    int num_iter = 8;
-    int num_iteration = 500001;
-    int memory_size = 20;           // New: Ant memory size
-    int threshold_start = 0;        // New: Start similarity threshold
-    int threshold_end = 20;         // New: End similarity threshold
-    int threshold_interval = 2;     // New: Interval for similarity threshold sweep
-    std::vector<double> prob_relu = { 0.3, 0.5 };
+    int ground_width = AIConfig::DEFAULT_GROUND_WIDTH;
+    int ground_length = AIConfig::DEFAULT_GROUND_LENGTH;
+    int num_ants = AIConfig::DEFAULT_NUM_ANTS;
+    int num_iter = AIConfig::DEFAULT_NUM_EXPERIMENTS;
+    int num_iteration = AIConfig::DEFAULT_ITERATIONS;
+    int memory_size = AIConfig::DEFAULT_MEMORY_SIZE;           // Ant memory size
+    int threshold_start = AIConfig::DEFAULT_THRESHOLD_START;   // Start similarity threshold
+    int threshold_end = AIConfig::DEFAULT_THRESHOLD_END;       // End similarity threshold
+    int threshold_interval = AIConfig::DEFAULT_THRESHOLD_INTERVAL; // Interval for similarity threshold sweep
+    std::vector<double> prob_relu(AIConfig::DEFAULT_PROB_RELU.begin(), AIConfig::DEFAULT_PROB_RELU.end());
     bool enable_visual = false;
     std::string csvFilename = "ground_data.csv";  // Default CSV filename
 

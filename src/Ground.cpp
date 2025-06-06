@@ -1,14 +1,6 @@
-// In Ground.cpp
-
-/**
- * @brief For each ant, determines if it should pick up, drop, or swap an object.
- *
- * The core logic is probabilistic. An ant is more likely to drop an object
- * it's carrying if it's surrounded by many similar objects. Conversely, it's more
- * likely to pick up an object if it's in a sparse area with few similar neighbors.
- * This emergent behavior leads to the formation of clusters.
- */
 #include "ant_intelligence/Ground.h"
+#include "ant_intelligence/Config.h"
+#include "ant_intelligence/Objects.h"
 #include <random>
 #include <algorithm>
 #include <numeric>
@@ -18,7 +10,6 @@
 #include <unordered_set>
 #include <stdexcept>  // For std::invalid_argument
 #include <cstdlib>
-#include "ant_intelligence/Objects.h"
 
 // Constructor: Build adjacency list of possible positions
 Ground::Ground(int width,
@@ -288,6 +279,7 @@ const std::vector<Ant>& Ground::getAgents() const {
 }
 
 std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_hash> Ground::getPossiblePositions() {
+    // This defines the 8 directions relative to a central point.
     std::vector<std::pair<int, int>> neighborOffsets = {
         { 0, -1}, { 1, -1}, { 1,  0}, { 1,  1},
         { 0,  1}, {-1,  1}, {-1,  0}, {-1, -1}
@@ -357,14 +349,19 @@ int Ground::countNeighbors(const std::pair<int, int>& pos, std::shared_ptr<Objec
     return count;
 }
 
+// Helper function to get the object type as an integer.
+// This uses the enum from Config.h for clarity and safety.
 static int getTypeFromLoad(const std::shared_ptr<Object>& load) {
-    if (std::dynamic_pointer_cast<Food>(load))
-        return 1;
-    else if (std::dynamic_pointer_cast<Waste>(load))
-        return 2;
-    else if (std::dynamic_pointer_cast<Egg>(load))
-        return 3;
-    return 0;
+    if (std::dynamic_pointer_cast<Food>(load)) {
+        return static_cast<int>(AIConfig::ObjectType::Food);
+    }
+    else if (std::dynamic_pointer_cast<Waste>(load)) {
+        return static_cast<int>(AIConfig::ObjectType::Waste);
+    }
+    else if (std::dynamic_pointer_cast<Egg>(load)) {
+        return static_cast<int>(AIConfig::ObjectType::Egg);
+    }
+    return static_cast<int>(AIConfig::ObjectType::None);
 }
 
 void Ground::handleAntInteractions(int currentIteration) {
@@ -400,7 +397,9 @@ void Ground::handleAntInteractions(int currentIteration) {
 
                 if (similarity >= similarityThreshold) {
                     interactionCounter++;
-                    antA.setPrevDirection((antB.getPrevDirection() + 4) % 8);
+                    // Turn around relative to the other ant's direction.
+                    // Use the named constant for number of directions instead of a magic number.
+                    antA.setPrevDirection((antB.getPrevDirection() + 4) % AIConfig::NUM_DIRECTIONS);
                     antA.setInteractionCooldown(20);
                     interactionOccurred = true;
 
@@ -428,5 +427,3 @@ void Ground::handleAntInteractions(int currentIteration) {
             ant.setInteractionCooldown(ant.getInteractionCooldown() - 1);
     }
 }
-
-
