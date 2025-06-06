@@ -35,5 +35,8 @@
     <ClInclude Include="..\include\ant_intelligence\Objects.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\ant_intelligence\Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

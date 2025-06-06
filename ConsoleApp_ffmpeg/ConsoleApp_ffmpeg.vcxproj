@@ -27,6 +27,7 @@
     <ClInclude Include="..\include\ant_intelligence\Ant.h" />
     <ClInclude Include="..\include\ant_intelligence\Ground.h" />
     <ClInclude Include="..\include\ant_intelligence\Objects.h" />
+    <ClInclude Include="..\include\ant_intelligence\Utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
