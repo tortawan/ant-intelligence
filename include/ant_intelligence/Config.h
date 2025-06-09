@@ -29,13 +29,13 @@ namespace AIConfig {
     constexpr int DEFAULT_GROUND_WIDTH = 200;
     constexpr int DEFAULT_GROUND_LENGTH = 160;
     constexpr int DEFAULT_NUM_ANTS = 100;
-    constexpr int DEFAULT_NUM_EXPERIMENTS = 8;
+    constexpr int DEFAULT_NUM_EXPERIMENTS = 4;
     constexpr int DEFAULT_ITERATIONS = 500001;
     constexpr int DEFAULT_MEMORY_SIZE = 20;
     constexpr int DEFAULT_THRESHOLD_START = 0;
     constexpr int DEFAULT_THRESHOLD_END = 20;
-    constexpr int DEFAULT_THRESHOLD_INTERVAL = 2;
+    constexpr int DEFAULT_THRESHOLD_INTERVAL = 5;
 
     // Default probability range used for pick/drop logic
-    constexpr std::array<double, 2> DEFAULT_PROB_RELU{ {0.3, 0.5} };
+    constexpr std::array<double, 2> DEFAULT_PROB_RELU{ {0.3, 0.7} };
 }

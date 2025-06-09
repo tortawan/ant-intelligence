@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) {
         {
             if (!SetThreadAffinityToPerformanceCores()) {
                 std::cerr << "Warning: Failed to set thread affinity for thread " << omp_get_thread_num() << std::endl;
-            }
+           }
 #pragma omp single
             {
                 std::cout << "Number of threads in use: " << omp_get_num_threads() << std::endl;
