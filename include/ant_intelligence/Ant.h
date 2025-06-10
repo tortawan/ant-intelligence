@@ -14,7 +14,7 @@
 #include <sstream>  // For memory serialization
 #include <string>   // For std::string
 
-// Forward declarations
+ // Forward declarations
 class Object;
 class Food;
 class Waste;
@@ -99,6 +99,17 @@ public:
      */
     void updateMemory(std::shared_ptr<Object> seenObject);
 
+    /**
+     * @brief Pick a direction using weighted probabilities.
+     *
+     * The distribution is rotated based on the previous direction to introduce
+     * inertia in movement.
+     */
+    int getRandomWeightedDirection(
+        const std::vector<double>& probabilities,
+        int prevDirection);
+
+
 private:
     // Position in 2D grid
     std::pair<int, int> position;
@@ -139,16 +150,7 @@ private:
     void updateMovementDict();
     /** @brief Pick a random direction in range [0,7] */
     int getRandomDirection();
-    /**
-     * @brief Pick a direction using weighted probabilities.
-     *
-     * The distribution is rotated based on the previous direction to introduce
-     * inertia in movement.
-     */
-    int getRandomWeightedDirection(
-        const std::vector<double>& probabilities,
-        int prevDirection);
     ///@}
 
-    
+
 };
