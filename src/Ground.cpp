@@ -204,6 +204,7 @@ double Ground::bfsCluster(
     return clusterSize;
 }
 
+#ifndef IS_TEST_BUILD
 void Ground::showGround(const std::string& windowName, cv::VideoWriter& video) const {
     int scale = 6;
     cv::Mat image = cv::Mat::ones(width * scale, length * scale, CV_8UC3) * 255;
@@ -249,6 +250,7 @@ void Ground::showGround(const std::string& windowName, cv::VideoWriter& video) c
     video.write(image);
     cv::waitKey(1);
 }
+#endif
 
 void Ground::countObjects() const {
     int foodCount = 0;
@@ -366,11 +368,11 @@ static int getTypeFromLoad(const std::shared_ptr<Object>& load) {
 
 void Ground::handleAntInteractions(int currentIteration) {
     std::unordered_map<std::pair<int, int>, std::vector<int>, pair_hash> positionsMap;
-    for (int i = 0; i < agents.size(); ++i) {
-        positionsMap[agents[i].getPosition()].push_back(i);
+    for (size_t i = 0; i < agents.size(); ++i) {
+        positionsMap[agents[i].getPosition()].push_back(static_cast<int>(i));
     }
 
-    for (int i = 0; i < agents.size(); ++i) {
+    for (size_t i = 0; i < agents.size(); ++i) {
         Ant& antA = agents[i];
         if (antA.getInteractionCooldown() != 0 || !antA.getLoad())
             continue;
@@ -389,11 +391,11 @@ void Ground::handleAntInteractions(int currentIteration) {
                 Ant& antB = agents[j];
                 int loadType = getTypeFromLoad(antA.getLoad());
 
-                int similarity = std::count(
+                int similarity = static_cast<int>(std::count(
                     antB.getMemory().begin(),
                     antB.getMemory().end(),
                     loadType
-                );
+                ));
 
                 if (similarity >= similarityThreshold) {
                     interactionCounter++;

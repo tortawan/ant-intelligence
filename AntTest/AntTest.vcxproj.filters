@@ -21,12 +21,18 @@
     <ClCompile Include="..\src\Ant.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Ground.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\ant_intelligence\Ant.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\ant_intelligence\Config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ant_intelligence\Ground.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -9,9 +9,13 @@
 #include "ant_intelligence/Objects.h"
 #include <vector>
 #include <unordered_map>
-#include <opencv2/opencv.hpp>
 #include <memory>
 #include <unordered_set>
+
+ // Conditionally include OpenCV headers only if this is NOT a test build.
+#ifndef IS_TEST_BUILD
+#include <opencv2/opencv.hpp>
+#endif
 
 /**
  * @class Ground
@@ -44,8 +48,13 @@ public:
     void assignWork();
     /** @brief Compute the average size of object clusters */
     double averageClusterSize();
+
+    // Conditionally include visualization-related functions.
+#ifndef IS_TEST_BUILD
     /** @brief Visualize the ground using OpenCV */
     void showGround(const std::string& windowName, cv::VideoWriter& video) const;
+#endif
+
     /** @brief Print a count of all objects */
     void countObjects() const;
     /** @brief Access the underlying ant vector */
