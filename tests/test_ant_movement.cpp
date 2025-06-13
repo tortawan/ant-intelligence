@@ -1,7 +1,8 @@
 ﻿// File: tests/run_all_tests.cpp
 //
 // This program is a comprehensive unit test suite for the Ant and Ground classes.
-// It includes tests for movement inertia, memory logic, and interaction conditions.
+// It includes tests for movement inertia, memory logic, interaction conditions,
+// and boundary checking.
 //
 // How to compile (from the root project directory):
 //   Using g++:
@@ -136,10 +137,11 @@ bool run_single_interaction_test(int threshold, int num_matching_memories) {
     // We can't add them directly, so we'll use a trick with reflection or make a public method.
     // For simplicity here, we assume we could directly manipulate the agents.
     // In the real code, we'll need to adapt this. Let's modify Ground temporarily for the test.
-    // If we can't, we can simulate the logic of handleAntInteractions directly.
 
     // Let's directly simulate the core logic of handleAntInteractions to avoid changing the Ground class.
     int loadType = 1; // 1 for Food
+
+    // FIX for C4244: Use 'auto' to let the compiler deduce the correct (64-bit) type.
     auto similarity = std::count(antB.getMemory().begin(), antB.getMemory().end(), loadType);
 
     // The core logic we are testing:
@@ -173,6 +175,94 @@ bool test_interaction_thresholds() {
     return all_passed;
 }
 
+// --- Test Case 4: Ant Movement at Boundaries ---
+
+// Helper function to generate possible positions for a grid.
+// This logic is copied from Ground::getPossiblePositions for testing purposes
+// to avoid making the test a 'friend' of the Ground class.
+std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_hash>
+get_test_possible_positions(int width, int length) {
+    std::vector<std::pair<int, int>> neighborOffsets = {
+        { 0, -1}, { 1, -1}, { 1,  0}, { 1,  1},
+        { 0,  1}, {-1,  1}, {-1,  0}, {-1, -1}
+    };
+    std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_hash> result;
+
+    for (int x = 0; x < width; ++x) {
+        for (int y = 0; y < length; ++y) {
+            std::vector<std::pair<int, int>> neighbors;
+            for (auto& offset : neighborOffsets) {
+                int nx = x + offset.first;
+                int ny = y + offset.second;
+                if (nx >= 0 && nx < width && ny >= 0 && ny < length) {
+                    neighbors.push_back({ nx, ny });
+                }
+            }
+            result[{x, y}] = neighbors;
+        }
+    }
+    return result;
+}
+
+bool test_movement_at_boundaries() {
+    const int width = 3;
+    const int length = 3;
+    const int numSamples = 100; // Number of moves to test for each position
+    bool all_passed = true;
+
+    // Generate the map of valid moves for our test grid.
+    auto possiblePositions = get_test_possible_positions(width, length);
+
+    // Use a uniform probability distribution, as we are not testing inertia here.
+    std::vector<double> uniform_prob(AIConfig::NUM_DIRECTIONS, 1.0 / AIConfig::NUM_DIRECTIONS);
+
+    // Lambda to perform the test for a single starting position.
+    auto run_boundary_test = [&](const std::pair<int, int>& startPos, const std::string& posName) {
+        // Get the list of legally possible next positions from our pre-computed map.
+        const auto& legalNextPositions = possiblePositions.at(startPos);
+
+        for (int i = 0; i < numSamples; ++i) {
+            // Create a new ant at the start position for each sample to ensure a clean test.
+            Ant sampleAnt(startPos, width, length, false, 5);
+            sampleAnt.move(possiblePositions, uniform_prob);
+            auto newPos = sampleAnt.getPosition();
+
+            // Check if the new position is in the list of legal positions.
+            bool found_in_legal_moves = false;
+            for (const auto& legalPos : legalNextPositions) {
+                if (newPos == legalPos) {
+                    found_in_legal_moves = true;
+                    break;
+                }
+            }
+
+            if (!found_in_legal_moves) {
+                std::cout << "  [FAIL] " << posName << ": Ant moved from (" << startPos.first << "," << startPos.second
+                    << ") to an illegal position (" << newPos.first << "," << newPos.second << ")" << std::endl;
+                all_passed = false;
+                return; // Exit this lambda early on failure.
+            }
+        }
+        std::cout << "  [PASS] " << posName << ": Ant stayed in bounds for " << numSamples << " moves." << std::endl;
+        };
+
+    std::cout << "  Testing boundary conditions on a " << width << "x" << length << " grid." << std::endl;
+
+    // Test a corner position.
+    run_boundary_test({ 0, 0 }, "Corner (0,0)");
+
+    // Test an edge position.
+    run_boundary_test({ 1, 0 }, "Edge   (1,0)");
+
+    // Test the center as a control case.
+    run_boundary_test({ 1, 1 }, "Center (1,1)");
+
+    // Test another corner.
+    run_boundary_test({ width - 1, length - 1 }, "Corner (2,2)");
+
+    return all_passed;
+}
+
 
 int main() {
     TestSuite suite;
@@ -181,6 +271,7 @@ int main() {
     suite.run("Memory FIFO Logic", test_memory_fifo);
     suite.run("Memory Ignores Null", test_memory_ignores_nullptr);
     suite.run("Interaction Logic by Threshold", test_interaction_thresholds);
+    suite.run("Movement at Boundaries", test_movement_at_boundaries);
 
     suite.summary();
 
