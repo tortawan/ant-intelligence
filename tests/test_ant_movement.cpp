@@ -140,7 +140,7 @@ bool run_single_interaction_test(int threshold, int num_matching_memories) {
 
     // Let's directly simulate the core logic of handleAntInteractions to avoid changing the Ground class.
     int loadType = 1; // 1 for Food
-    int similarity = std::count(antB.getMemory().begin(), antB.getMemory().end(), loadType);
+    auto similarity = std::count(antB.getMemory().begin(), antB.getMemory().end(), loadType);
 
     // The core logic we are testing:
     return similarity >= threshold;
