@@ -28,6 +28,7 @@
 #include <map>
 #include <stdexcept>
 #include <omp.h>
+#include <sstream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -152,16 +153,21 @@ int main(int argc, char* argv[]) {
     write_csv_header(file, params);
 
     auto total_start_time = std::chrono::high_resolution_clock::now();
+    std::cout << "\nStarting simulation with " << omp_get_max_threads() << " threads." << std::endl;
 
     // Main simulation loop: sweep through threshold values
     for (int threshold = params.threshold_start; threshold <= params.threshold_end; threshold += params.threshold_interval) {
 
-        // Use a critical section for file writing to ensure thread safety.
-        std::stringstream file_buffer;
+        std::cout << "Running experiments for Threshold = " << threshold << "..." << std::endl;
+
+        // Create a vector of string streams, one for each thread, to buffer results without locks.
+        std::vector<std::stringstream> file_buffers(omp_get_max_threads());
+        std::vector<std::stringstream> console_buffers(omp_get_max_threads());
 
         // Parallelize the experimental runs for the current threshold
 #pragma omp parallel for schedule(dynamic, 1)
         for (int j = 0; j < params.num_experiments; ++j) {
+            int thread_id = omp_get_thread_num();
 
             // Initialize the simulation environment for this run
             Ground ground(params.width, params.length, prob, params.prob_relu, threshold);
@@ -181,26 +187,23 @@ int main(int argc, char* argv[]) {
                     double avg_cluster_size = ground.averageClusterSize();
                     int interaction_count = ground.getInteractionCount();
 
-                    // Buffer the data to be written to the file
-                    file_buffer << threshold << "," << i << "," << j + 1 << ","
+                    // Buffer data to the thread-local string stream. No lock needed.
+                    file_buffers[thread_id] << threshold << "," << i << "," << j + 1 << ","
                         << avg_cluster_size << "," << interaction_count << "\n";
 
-                    // Print the desired output to the console.
-                    // This is in a critical section to prevent garbled output from multiple threads.
-#pragma omp critical
-                    {
-                        std::cout << "Experiment: " << j + 1
-                            << ", Iteration: " << i
-                            << ", Average Cluster Size: " << avg_cluster_size << std::endl;
-                    }
+                    // Buffer console output to the thread-local string stream.
+                    console_buffers[thread_id] << "Experiment: " << j + 1
+                        << ", Iteration: " << i
+                        << ", Average Cluster Size: " << avg_cluster_size << "\n";
                 }
             }
         }
 
-        // Write the buffered data to the file in a single critical section
-#pragma omp critical
-        {
-            file << file_buffer.str();
+        // --- Aggregation Step (Single Thread) ---
+        // Combine all buffered results and write to file and console at once.
+        for (int i = 0; i < omp_get_max_threads(); ++i) {
+            file << file_buffers[i].rdbuf();
+            std::cout << console_buffers[i].rdbuf();
         }
     }
 
