@@ -9,160 +9,124 @@
  *
  * The results, including average cluster size and interaction counts, are
  * logged to a CSV file for later analysis.
- *
- * @section usage Usage
- * The program is controlled via command-line arguments:
- * --width <int>                Width of the simulation grid.
- * --length <int>               Length of the simulation grid.
- * --ants <int>                 Number of ants in the simulation.
- * --experiments <int>          Number of times to run the simulation for each threshold.
- * --iterations <int>           Number of steps in each simulation run.
- * --memory_size <int>          The memory capacity of each ant.
- * --threshold_start <int>      The starting value for the similarity threshold sweep.
- * --threshold_end <int>        The ending value for the similarity threshold sweep.
- * --threshold_interval <int>   The step size for the threshold sweep.
- * --prob_relu_low <float>      The lower bound for the pick/drop probability function.
- * --prob_relu_high <float>     The upper bound for the pick/drop probability function.
- * --csv_filename <string>      Name of the output data file.
- * --video <true|false>         Enable or disable video recording of the simulation.
  */
 
 #define NOMINMAX
 
-#include <opencv2/opencv.hpp>
-#include <vector>
-#include <unordered_map>
-#include <random>
-#include <algorithm>
-#include <numeric>
-#include <chrono>
-#include <thread>
-#include <fstream>
-#include <iostream>
-#include <omp.h>
-#include <windows.h>
-#include <cstdlib>
-#include <memory>
 #include "ant_intelligence/Ant.h"
+#include "ant_intelligence/Config.h"
 #include "ant_intelligence/Ground.h"
 #include "ant_intelligence/Objects.h"
-#include "ant_intelligence/Config.h"
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <chrono>
+#include <numeric>
+#include <cstdlib>
+#include <memory>
+#include <map>
+#include <stdexcept>
+#include <omp.h>
 
-// Function to set thread affinity to performance cores
-bool SetThreadAffinityToPerformanceCores() {
-    DWORD_PTR processAffinityMask = 0;
-    DWORD_PTR systemAffinityMask = 0;
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
-    if (!GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
-        std::cerr << "Failed to get process affinity mask. Error code: " << GetLastError() << std::endl;
-        return false;
+ // A simple struct to hold all simulation parameters.
+struct SimParameters {
+    int width = AIConfig::DEFAULT_GROUND_WIDTH;
+    int length = AIConfig::DEFAULT_GROUND_LENGTH;
+    int num_ants = AIConfig::DEFAULT_NUM_ANTS;
+    int num_experiments = AIConfig::DEFAULT_NUM_EXPERIMENTS;
+    int num_iterations = AIConfig::DEFAULT_ITERATIONS;
+    int memory_size = AIConfig::DEFAULT_MEMORY_SIZE;
+    int threshold_start = AIConfig::DEFAULT_THRESHOLD_START;
+    int threshold_end = AIConfig::DEFAULT_THRESHOLD_END;
+    int threshold_interval = AIConfig::DEFAULT_THRESHOLD_INTERVAL;
+    std::vector<double> prob_relu = { AIConfig::DEFAULT_PROB_RELU[0], AIConfig::DEFAULT_PROB_RELU[1] };
+    bool enable_visual = false;
+    std::string csv_filename = "ground_data.csv";
+};
+
+// Function to parse command-line arguments into the parameters struct.
+void parse_arguments(int argc, char* argv[], SimParameters& params) {
+    std::map<std::string, std::string> args;
+    for (int i = 1; i < argc; i += 2) {
+        if (i + 1 < argc) {
+            args[argv[i]] = argv[i + 1];
+        }
     }
 
-    // For i9 13900HX, let's assume the first 8 cores are performance cores
-    DWORD_PTR performanceCoreMask = 0xFF; // binary: 11111111
-
-    DWORD_PTR newAffinityMask = performanceCoreMask & processAffinityMask;
-    if (newAffinityMask == 0) {
-        std::cerr << "No performance cores available within the process affinity mask." << std::endl;
-        return false;
+    try {
+        if (args.count("--width")) params.width = std::stoi(args["--width"]);
+        if (args.count("--length")) params.length = std::stoi(args["--length"]);
+        if (args.count("--ants")) params.num_ants = std::stoi(args["--ants"]);
+        if (args.count("--experiments")) params.num_experiments = std::stoi(args["--experiments"]);
+        if (args.count("--iterations")) params.num_iterations = std::stoi(args["--iterations"]);
+        if (args.count("--memory_size")) params.memory_size = std::stoi(args["--memory_size"]);
+        if (args.count("--threshold_start")) params.threshold_start = std::stoi(args["--threshold_start"]);
+        if (args.count("--threshold_end")) params.threshold_end = std::stoi(args["--threshold_end"]);
+        if (args.count("--threshold_interval")) params.threshold_interval = std::stoi(args["--threshold_interval"]);
+        if (args.count("--prob_relu_low")) params.prob_relu[0] = std::stod(args["--prob_relu_low"]);
+        if (args.count("--prob_relu_high")) params.prob_relu[1] = std::stod(args["--prob_relu_high"]);
+        if (args.count("--csv_filename")) params.csv_filename = args["--csv_filename"];
+        if (args.count("--video")) {
+            std::string val = args["--video"];
+            params.enable_visual = (val == "true" || val == "1");
+        }
     }
-
-    if (!SetThreadAffinityMask(GetCurrentThread(), newAffinityMask)) {
-        std::cerr << "Failed to set thread affinity mask. Error code: " << GetLastError() << std::endl;
-        return false;
+    catch (const std::invalid_argument& e) {
+        std::cerr << "Error: Invalid argument type provided. " << e.what() << std::endl;
+        exit(1);
     }
-
-    return true;
+    catch (const std::out_of_range& e) {
+        std::cerr << "Error: Argument value out of range. " << e.what() << std::endl;
+        exit(1);
+    }
 }
+
+// Function to print the simulation parameters.
+void print_parameters(const SimParameters& params) {
+    std::cout << "--- Simulation Parameters ---" << std::endl;
+    std::cout << "  Grid Dimensions: " << params.width << "x" << params.length << std::endl;
+    std::cout << "  Number of Ants: " << params.num_ants << std::endl;
+    std::cout << "  Number of Experiments: " << params.num_experiments << std::endl;
+    std::cout << "  Iterations per Experiment: " << params.num_iterations << std::endl;
+    std::cout << "  Ant Memory Size: " << params.memory_size << std::endl;
+    std::cout << "  Threshold Sweep: " << params.threshold_start << " to " << params.threshold_end
+        << " (step " << params.threshold_interval << ")" << std::endl;
+    std::cout << "  Pick/Drop Probability Range: [" << params.prob_relu[0] << ", " << params.prob_relu[1] << "]" << std::endl;
+    std::cout << "  Video Enabled: " << (params.enable_visual ? "Yes" : "No") << std::endl;
+    std::cout << "  Output CSV: " << params.csv_filename << std::endl;
+    std::cout << "-----------------------------" << std::endl;
+}
+
+// Function to write the header of the CSV data file.
+void write_csv_header(std::ofstream& file, const SimParameters& params) {
+    file << "# Simulation Parameters:\n";
+    file << "# Grid Width: " << params.width << "\n";
+    file << "# Ground Length: " << params.length << "\n";
+    file << "# Number of Ants: " << params.num_ants << "\n";
+    file << "# Number of Experiments: " << params.num_experiments << "\n";
+    file << "# Iterations per Experiment: " << params.num_iterations << "\n";
+    file << "# Memory Size: " << params.memory_size << "\n";
+    file << "# Threshold Start: " << params.threshold_start << "\n";
+    file << "# Threshold End: " << params.threshold_end << "\n";
+    file << "# Threshold Interval: " << params.threshold_interval << "\n";
+    file << "# Prob Relu Low: " << params.prob_relu[0] << "\n";
+    file << "# Prob Relu High: " << params.prob_relu[1] << "\n";
+    file << "Threshold,Iteration,Run,ClusterSize,InteractionCount\n";
+}
+
 
 int main(int argc, char* argv[]) {
     // Seed for random number generation
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
-    // Default values
-    int ground_width = AIConfig::DEFAULT_GROUND_WIDTH;
-    int ground_length = AIConfig::DEFAULT_GROUND_LENGTH;
-    int num_ants = AIConfig::DEFAULT_NUM_ANTS;
-    int num_iter = AIConfig::DEFAULT_NUM_EXPERIMENTS;
-    int num_iteration = AIConfig::DEFAULT_ITERATIONS;
-    int memory_size = AIConfig::DEFAULT_MEMORY_SIZE;           // Ant memory size
-    int threshold_start = AIConfig::DEFAULT_THRESHOLD_START;   // Start similarity threshold
-    int threshold_end = AIConfig::DEFAULT_THRESHOLD_END;       // End similarity threshold
-    int threshold_interval = AIConfig::DEFAULT_THRESHOLD_INTERVAL; // Interval for similarity threshold sweep
-    std::vector<double> prob_relu(AIConfig::DEFAULT_PROB_RELU.begin(), AIConfig::DEFAULT_PROB_RELU.end());
-    bool enable_visual = false;
-    std::string csvFilename = "ground_data.csv";  // Default CSV filename
-
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    // Parse command-line arguments 
-    for (int i = 1; i < argc; i += 2) {
-        std::string arg = argv[i];
-        if (i + 1 < argc) {
-            if (arg == "--width") {
-                ground_width = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--length") {
-                ground_length = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--ants") {
-                num_ants = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--experiments") {
-                num_iter = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--iterations") {
-                num_iteration = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--memory_size") {
-                memory_size = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--threshold_start") {
-                threshold_start = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--threshold_end") {
-                threshold_end = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--threshold_interval") {
-                threshold_interval = std::atoi(argv[i + 1]);
-            }
-            else if (arg == "--prob_relu_low") {
-                prob_relu[0] = std::atof(argv[i + 1]);
-            }
-            else if (arg == "--prob_relu_high") {
-                prob_relu[1] = std::atof(argv[i + 1]);
-            }
-            else if (arg == "--csv_filename") { // New parameter
-                csvFilename = argv[i + 1];
-            }
-            else if (arg == "--video") {
-                std::string val = argv[i + 1];
-                if (val == "true" || val == "1") {
-                    enable_visual = true;
-                }
-                else if (val == "false" || val == "0") {
-                    enable_visual = false;
-                }
-            }
-
-
-        }
-    }
-
-
-    // Print parameters
-    std::cout << "Ground width: " << ground_width << std::endl;
-    std::cout << "Ground length: " << ground_length << std::endl;
-    std::cout << "Number of ants: " << num_ants << std::endl;
-    std::cout << "Number of experiments: " << num_iter << std::endl;
-    std::cout << "Iterations per experiment: " << num_iteration << std::endl;
-    std::cout << "Memory size: " << memory_size << std::endl;
-    std::cout << "Threshold sweep: from " << threshold_start << " to " << threshold_end
-        << " with interval " << threshold_interval << std::endl;
-    std::cout << "Prob_relu: [" << prob_relu[0] << ", " << prob_relu[1] << "]" << std::endl;
-    std::cout << "Video enabled: " << (enable_visual ? "Yes" : "No") << std::endl;
-    std::cout << "Multi Files " << std::endl;
+    SimParameters params;
+    parse_arguments(argc, argv, params);
+    print_parameters(params);
 
     // Normalize probability distribution for ant movement
     std::vector<double> prob = { 12, 5, 2, 1, 0.1, 1, 2, 5 };
@@ -179,154 +143,73 @@ int main(int argc, char* argv[]) {
         {nullptr,                  0.85}
     };
 
-    // Open output file with header (now with an extra column for Memory)
-    std::ofstream file(csvFilename);
+    // Open output file
+    std::ofstream file(params.csv_filename);
     if (!file.is_open()) {
-        std::cerr << "Could not open the output file for writing" << std::endl;
+        std::cerr << "Error: Could not open the output file '" << params.csv_filename << "'" << std::endl;
         return -1;
     }
+    write_csv_header(file, params);
 
-    // Write metadata header
-    file << "# Simulation Parameters:\n";
-    file << "# Grid Width: " << ground_width << "\n";
-    file << "# Ground Length: " << ground_length << "\n";
-    file << "# Number of Ants: " << num_ants << "\n";
-    file << "# Number of Experiments: " << num_iter << "\n";
-    file << "# Iterations per Experiment: " << num_iteration << "\n";
-    file << "# Memory Size: " << memory_size << "\n";
-    file << "# Threshold Start: " << threshold_start << "\n";
-    file << "# Threshold End: " << threshold_end << "\n";
-    file << "# Threshold Interval: " << threshold_interval << "\n";
-    file << "# Prob Relu Low: " << prob_relu[0] << "\n";
-    file << "# Prob Relu High: " << prob_relu[1] << "\n";
+    auto total_start_time = std::chrono::high_resolution_clock::now();
 
-    // Updated header to include InteractionCount
-    file << "Threshold,Iteration,Run,ClusterSize,Memory,InteractionCount\n";
+    // Main simulation loop: sweep through threshold values
+    for (int threshold = params.threshold_start; threshold <= params.threshold_end; threshold += params.threshold_interval) {
 
-    // Video output setup
-    cv::VideoWriter video;
-    if (enable_visual) {
-        video.open(
-            "ground_simulation.mp4",
-            cv::VideoWriter::fourcc('m', 'p', '4', 'v'),
-            60,
-            cv::Size(ground_length * 6, ground_width * 6)
-        );
-        if (!video.isOpened()) {
-            std::cerr << "Could not open the output video file for writing" << std::endl;
-            return -1;
+        // Use a critical section for file writing to ensure thread safety.
+        std::stringstream file_buffer;
+
+        // Parallelize the experimental runs for the current threshold
+#pragma omp parallel for schedule(dynamic, 1)
+        for (int j = 0; j < params.num_experiments; ++j) {
+
+            // Initialize the simulation environment for this run
+            Ground ground(params.width, params.length, prob, params.prob_relu, threshold);
+            ground.addObject(obj_dict);
+            for (int i = 0; i < params.num_ants; ++i) {
+                ground.addAnt(params.memory_size);
+            }
+
+            // Run the simulation for the specified number of iterations
+            for (int i = 0; i < params.num_iterations; ++i) {
+                ground.moveAnts();
+                ground.assignWork();
+                ground.handleAntInteractions(i);
+
+                // Log data at specified intervals
+                if (i % 10000 == 0) {
+                    double avg_cluster_size = ground.averageClusterSize();
+                    int interaction_count = ground.getInteractionCount();
+
+                    // Buffer the data to be written to the file
+                    file_buffer << threshold << "," << i << "," << j + 1 << ","
+                        << avg_cluster_size << "," << interaction_count << "\n";
+
+                    // Print the desired output to the console.
+                    // This is in a critical section to prevent garbled output from multiple threads.
+#pragma omp critical
+                    {
+                        std::cout << "Experiment: " << j + 1
+                            << ", Iteration: " << i
+                            << ", Average Cluster Size: " << avg_cluster_size << std::endl;
+                    }
+                }
+            }
         }
-    }
 
-    // Data collection: sweep threshold values from threshold_start to threshold_end with threshold_interval
-    for (int threshold = threshold_start; threshold <= threshold_end; threshold += threshold_interval) {
-        std::vector<std::vector<double>> all_cluster_sizes(num_iter);
-
-        std::cout << "Starting experiments for Similarity Threshold = " << threshold << std::endl;
-        auto threshold_start_time = std::chrono::high_resolution_clock::now();
-
-#pragma omp parallel
+        // Write the buffered data to the file in a single critical section
+#pragma omp critical
         {
-            if (!SetThreadAffinityToPerformanceCores()) {
-                std::cerr << "Warning: Failed to set thread affinity for thread " << omp_get_thread_num() << std::endl;
-           }
-#pragma omp single
-            {
-                std::cout << "Number of threads in use: " << omp_get_num_threads() << std::endl;
-            }
-#pragma omp for schedule(dynamic, 1)
-            for (int j = 0; j < num_iter; ++j) {
-                std::random_device rd;
-                std::mt19937 local_gen(rd() + omp_get_thread_num());
-
-#pragma omp critical
-                {
-                    std::cout << "Threshold " << threshold << " - Run number " << j + 1
-                        << " starting on thread " << omp_get_thread_num() << std::endl;
-                }
-                // Construct Ground with current threshold; ensure that Ground uses memory_size as needed.
-                Ground ground(ground_width, ground_length, prob, prob_relu, threshold);
-                // Optionally, set the memory size in Ground or pass it to Ants here.
-                ground.addObject(obj_dict);
-                for (int i = 0; i < num_ants; ++i) {
-                    ground.addAnt(memory_size);
-                }
-#pragma omp critical
-                {
-                    ground.countObjects();
-                    if (enable_visual) {
-                        ground.showGround("Ground before operation", video);
-                    }
-                }
-                for (int i = 0; i < num_iteration; ++i) {
-                    if (enable_visual && i % 500 == 0) {
-#pragma omp critical
-                        {
-                            ground.showGround("Ant Movement", video);
-                        }
-                    }
-                    ground.moveAnts();
-                    ground.assignWork();
-                    ground.handleAntInteractions(i);
-
-                    if (i % 10000 == 0) {
-                        double temp = ground.averageClusterSize();
-#pragma omp critical
-                        {
-                            all_cluster_sizes[j].push_back(temp);
-                            // Log the average cluster size, memory, and interaction count
-                            if (!ground.getAgents().empty()) {
-                                const Ant& ant = ground.getAgents().front();
-                                file << threshold << "," << i << "," << j + 1 << "," << temp
-                                    << "," << ant.getMemoryString() << ","
-                                    << ground.getInteractionCount() << "\n";
-
-                                std::cout << "Threshold " << threshold << " - Logged cluster size: "
-                                    << temp << " at iteration " << i
-                                    << " for run " << j + 1
-                                    << " on thread " << omp_get_thread_num()
-                                    << " - Interaction count: " << ground.getInteractionCount() << std::endl;
-                            }
-                            else {
-                                file << threshold << "," << i << "," << j + 1 << "," << temp
-                                    << ",," << ground.getInteractionCount() << "\n";
-
-                                std::cout << "Threshold " << threshold << " - Logged cluster size: "
-                                    << temp << " at iteration " << i
-                                    << " for run " << j + 1
-                                    << " on thread " << omp_get_thread_num()
-                                    << " - Interaction count: " << ground.getInteractionCount() << std::endl;
-                            }
-                        }
-                    }
-                }
-#pragma omp critical
-                {
-                    if (enable_visual) {
-                        ground.showGround("Ground after operation", video);
-                    }
-                    std::cout << "Threshold " << threshold << " - Run number "
-                        << j + 1 << " completed on thread " << omp_get_thread_num()
-                        << " - Final interaction count: " << ground.getInteractionCount() << std::endl;
-                }
-            }
+            file << file_buffer.str();
         }
-        auto threshold_end_time = std::chrono::high_resolution_clock::now();
-        auto threshold_duration = std::chrono::duration_cast<std::chrono::milliseconds>(threshold_end_time - threshold_start_time);
-        std::cout << "Threshold " << threshold << " experiments complete. Duration: "
-            << threshold_duration.count() << " milliseconds" << std::endl;
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-    std::cout << "Total execution time: " << total_duration.count() << " milliseconds" << std::endl;
+    auto total_end_time = std::chrono::high_resolution_clock::now();
+    auto total_duration = std::chrono::duration_cast<std::chrono::seconds>(total_end_time - total_start_time);
+    std::cout << "\nTotal execution time: " << total_duration.count() << " seconds" << std::endl;
 
     file.close();
-    if (enable_visual) {
-        video.release();
-    }
-    std::cout << "Simulation complete. Data written to " << csvFilename << std::endl;
-    std::cout << "Please run the Python script to generate the confidence band plot." << std::endl;
+    std::cout << "Simulation complete. Data written to " << params.csv_filename << std::endl;
 
     return 0;
 }

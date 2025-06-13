@@ -406,15 +406,15 @@ void Ground::handleAntInteractions(int currentIteration) {
                     interactionOccurred = true;
 
                     // Print interaction details at specified iterations
-                    if (currentIteration % 10000 == 0 && currentIteration <= 100000) {
-                        std::cout << "Interaction occurred at iteration " << currentIteration << "\n";
-                        std::cout << "Ant A Load Type: " << loadType << "\n";
-                        std::cout << "Ant B Memory: ";
-                        for (int memItem : antB.getMemory()) {
-                            std::cout << memItem << " ";
-                        }
-                        std::cout << "\n";
-                    }
+                    //if (currentIteration % 10000 == 0 && currentIteration <= 100000) {
+                    //    std::cout << "Interaction occurred at iteration " << currentIteration << "\n";
+                    //    std::cout << "Ant A Load Type: " << loadType << "\n";
+                    //    std::cout << "Ant B Memory: ";
+                    //    for (int memItem : antB.getMemory()) {
+                    //        std::cout << memItem << " ";
+                    //    }
+                    //    std::cout << "\n";
+                    //}
 
                     break; // Count only one interaction per ant per iteration
                 }
