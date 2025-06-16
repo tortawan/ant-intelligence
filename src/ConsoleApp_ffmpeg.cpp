@@ -8,7 +8,9 @@
  * to test their effect on object clustering.
  *
  * The results, including average cluster size and interaction counts, are
- * logged to a CSV file for later analysis.
+ * logged to a CSV file for later analysis. This version is modified to
+ * only output the requested columns: Threshold, Run, Iteration, ClusterSize,
+ * and InteractionCount.
  */
 
 #define NOMINMAX
@@ -29,6 +31,7 @@
 #include <stdexcept>
 #include <omp.h>
 #include <sstream>
+#include <cstdio> // Added for the remove() function
 
 #ifdef _WIN32
 #include <windows.h>
@@ -103,37 +106,13 @@ void print_parameters(const SimParameters& params) {
     std::cout << "-----------------------------" << std::endl;
 }
 
-// Helper function to get the type of object an ant is carrying as an integer.
-int getLoadType(const std::shared_ptr<Object>& load) {
-    if (!load) return static_cast<int>(AIConfig::ObjectType::None); // 0
-    if (std::dynamic_pointer_cast<Food>(load)) return static_cast<int>(AIConfig::ObjectType::Food); // 1
-    if (std::dynamic_pointer_cast<Waste>(load)) return static_cast<int>(AIConfig::ObjectType::Waste); // 2
-    if (std::dynamic_pointer_cast<Egg>(load)) return static_cast<int>(AIConfig::ObjectType::Egg); // 3
-    return static_cast<int>(AIConfig::ObjectType::None);
-}
-
 // Function to write the header of the CSV data file.
-void write_csv_header(std::ofstream& file, const SimParameters& params) {
-    file << "# Simulation Parameters:\n";
-    file << "# Grid Width: " << params.width << "\n";
-    file << "# Ground Length: " << params.length << "\n";
-    file << "# Number of Ants: " << params.num_ants << "\n";
-    file << "# Number of Experiments: " << params.num_experiments << "\n";
-    file << "# Iterations per Experiment: " << params.num_iterations << "\n";
-    file << "# Memory Size: " << params.memory_size << "\n";
-    file << "# Threshold Start: " << params.threshold_start << "\n";
-    file << "# Threshold End: " << params.threshold_end << "\n";
-    file << "# Threshold Interval: " << params.threshold_interval << "\n";
-    file << "# Prob Relu Low: " << params.prob_relu[0] << "\n";
-    file << "# Prob Relu High: " << params.prob_relu[1] << "\n";
-    file << "Threshold,Iteration,Run,ClusterSize,InteractionCount,AntID,AntPosX,AntPosY,AntLoad,AntMemory\n";
+void write_csv_header(std::ofstream& file) {
+    file << "Threshold,Run,Iteration,ClusterSize,InteractionCount\n";
 }
 
 
 int main(int argc, char* argv[]) {
-    // *** BUG FIX: REMOVED a call to the non-thread-safe std::srand() ***
-    // std::srand(static_cast<unsigned int>(std::time(nullptr)));
-
     SimParameters params;
     parse_arguments(argc, argv, params);
     print_parameters(params);
@@ -153,13 +132,13 @@ int main(int argc, char* argv[]) {
         {nullptr,                  0.85}
     };
 
-    // Open output file
+    // Open main output file
     std::ofstream file(params.csv_filename);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open the output file '" << params.csv_filename << "'" << std::endl;
         return -1;
     }
-    write_csv_header(file, params);
+    write_csv_header(file);
 
     auto total_start_time = std::chrono::high_resolution_clock::now();
     std::cout << "\nStarting simulation with " << omp_get_max_threads() << " threads." << std::endl;
@@ -169,13 +148,16 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Running experiments for Threshold = " << threshold << "..." << std::endl;
 
-        // Create a vector of string streams, one for each thread, to buffer results without locks.
-        std::vector<std::stringstream> file_buffers(omp_get_max_threads());
+        // MODIFIED: This section now uses temporary files for each thread to prevent write conflicts.
 
         // Parallelize the experimental runs for the current threshold
 #pragma omp parallel for schedule(dynamic, 1)
         for (int j = 0; j < params.num_experiments; ++j) {
             int thread_id = omp_get_thread_num();
+            // Each thread gets its own temporary output file.
+            const std::string temp_filename = "temp_data_" + std::to_string(thread_id) + ".csv";
+            // Open in append mode in case a thread runs multiple experiments.
+            std::ofstream temp_file(temp_filename, std::ios_base::app);
 
             // Initialize the simulation environment for this run
             Ground ground(params.width, params.length, prob, params.prob_relu, threshold);
@@ -195,24 +177,13 @@ int main(int argc, char* argv[]) {
                     double avg_cluster_size = ground.averageClusterSize();
                     int interaction_count = ground.getInteractionCount();
 
-                    const auto& agents = ground.getAgents();
-                    for (size_t ant_idx = 0; ant_idx < agents.size(); ++ant_idx) {
-                        const Ant& ant = agents[ant_idx];
-                        auto pos = ant.getPosition();
-                        int loadType = getLoadType(ant.getLoad());
-                        std::string memory_str = ant.getMemoryString();
-
-                        // Buffer detailed data for this ant to the thread-local string stream
-                        file_buffers[thread_id] << threshold << "," << i << "," << j + 1 << ","
-                            << avg_cluster_size << "," << interaction_count << ","
-                            << ant_idx << "," << pos.first << "," << pos.second << ","
-                            << loadType << ",\"" << memory_str << "\"\n";
-                    }
+                    // Write directly to the thread-specific temporary file
+                    temp_file << threshold << "," << j + 1 << "," << i << ","
+                        << avg_cluster_size << "," << interaction_count << "\n";
 
                     // Print progress immediately, protecting it with a critical section
 #pragma omp critical
                     {
-                        // The 'endl' flushes the buffer, ensuring the message appears immediately.
                         std::cout << "Threshold: " << threshold
                             << ", Exp: " << j + 1
                             << ", Iteration: " << i << "/" << params.num_iterations
@@ -221,12 +192,21 @@ int main(int argc, char* argv[]) {
                     }
                 }
             }
+            temp_file.close(); // Close this thread's temporary file
         }
 
         // --- Aggregation Step (Single Thread) ---
-        // Combine all buffered file results and write to file at once.
+        // After all experiments for a threshold are done, combine the temporary files.
         for (int i = 0; i < omp_get_max_threads(); ++i) {
-            file << file_buffers[i].rdbuf();
+            const std::string temp_filename = "temp_data_" + std::to_string(i) + ".csv";
+            std::ifstream temp_file(temp_filename);
+            if (temp_file.is_open()) {
+                // Append the content of the temp file to the main file
+                file << temp_file.rdbuf();
+                temp_file.close();
+                // Clean up by deleting the temporary file
+                remove(temp_filename.c_str());
+            }
         }
     }
 
