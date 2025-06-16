@@ -24,10 +24,11 @@ Ant::Ant(std::pair<int, int> position, int width, int length, bool recordPath, i
 
 void Ant::move(
     const std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_hash>& possiblePositions,
-    const std::vector<double>& probabilities
+    const std::vector<double>& probabilities,
+    std::mt19937& gen // Accept the generator by reference
 ) {
     if (possiblePositions.find(position) != possiblePositions.end()) {
-        auto nextStepsList = possiblePositions.at(position);
+        auto& nextStepsList = possiblePositions.at(position);
         if (nextStepsList.size() == AIConfig::NUM_DIRECTIONS) {
             int newDirection = getRandomWeightedDirection(probabilities, prevDirection);
             auto dx_dy = movementDict[newDirection];
@@ -36,11 +37,19 @@ void Ant::move(
             prevDirection = newDirection;
         }
         else {
+            // OPTIMIZATION: Replaced non-thread-safe std::rand() with the modern generator.
+            std::uniform_int_distribution<> distrib(0, nextStepsList.size() - 1);
+            position = nextStepsList[distrib(gen)];
+
             auto prevPosition = position;
-            position = nextStepsList[std::rand() % nextStepsList.size()];
             auto dx = position.first - prevPosition.first;
             auto dy = position.second - prevPosition.second;
-            prevDirection = invMovementDict.at(std::make_pair(dx, dy));
+
+            // Handle potential issue where the new position is the same as the old one.
+            // This can happen if an ant is completely trapped.
+            if (invMovementDict.count({ dx, dy })) {
+                prevDirection = invMovementDict.at(std::make_pair(dx, dy));
+            }
         }
         if (recordPath) {
             visitedPositions.insert(position);

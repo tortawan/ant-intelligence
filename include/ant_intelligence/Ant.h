@@ -56,10 +56,12 @@ public:
      *
      * @param possiblePositions  Map of valid neighbor cells for every grid cell.
      * @param probabilities      Probability for choosing each of the 8 directions.
+     * @param gen                The random number generator to use (for thread safety).
      */
     void move(
         const std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_hash>& possiblePositions,
-        const std::vector<double>& probabilities);
+        const std::vector<double>& probabilities,
+        std::mt19937& gen);
 
     /** @name Getters */
     ///@{

@@ -62,8 +62,13 @@ void Ground::addObject(const std::unordered_map<std::shared_ptr<Object>, double>
 }
 
 void Ground::moveAnts() {
+    // OPTIMIZATION: Use a thread-local generator for thread-safe random numbers.
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 gen(rd());
+
     for (auto& ant : agents) {
-        ant.move(possiblePositions, probabilities);
+        // Pass the generator to the move function.
+        ant.move(possiblePositions, probabilities, gen);
     }
 }
 
@@ -306,21 +311,16 @@ std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_h
 }
 
 std::pair<int, int> Ground::getRandomPosition() {
-    // *** BUG FIX: Replaced non-thread-safe std::rand() with a thread-local generator ***
-    // Use a thread-local random number generator for thread safety.
-    // Each thread gets its own instance, seeded once from a true random source.
     thread_local static std::random_device rd;
     thread_local static std::mt19937 gen(rd());
 
     int size = static_cast<int>(possiblePositions.size());
     if (size == 0) {
-        // Handle the case where there are no possible positions to avoid division by zero.
         throw std::runtime_error("No possible positions available in Ground::getRandomPosition");
     }
-    // Create a uniform distribution for the valid range of indices.
     std::uniform_int_distribution<> distrib(0, size - 1);
 
-    int index = distrib(gen); // Use the thread-safe generator.
+    int index = distrib(gen);
     auto it = possiblePositions.begin();
     std::advance(it, index);
     return it->first;
@@ -365,8 +365,6 @@ int Ground::countNeighbors(const std::pair<int, int>& pos, std::shared_ptr<Objec
     return count;
 }
 
-// Helper function to get the object type as an integer.
-// This uses the enum from Config.h for clarity and safety.
 static int getTypeFromLoad(const std::shared_ptr<Object>& load) {
     if (std::dynamic_pointer_cast<Food>(load)) {
         return static_cast<int>(AIConfig::ObjectType::Food);
@@ -413,31 +411,16 @@ void Ground::handleAntInteractions(int currentIteration) {
 
                 if (similarity >= similarityThreshold) {
                     interactionCounter++;
-                    // Turn around relative to the other ant's direction.
-                    // Use the named constant for number of directions instead of a magic number.
                     antA.setPrevDirection((antB.getPrevDirection() + 4) % AIConfig::NUM_DIRECTIONS);
                     antA.setInteractionCooldown(20);
                     interactionOccurred = true;
-
-                    // Print interaction details at specified iterations
-                    //if (currentIteration % 10000 == 0 && currentIteration <= 100000) {
-                    //    std::cout << "Interaction occurred at iteration " << currentIteration << "\n";
-                    //    std::cout << "Ant A Load Type: " << loadType << "\n";
-                    //    std::cout << "Ant B Memory: ";
-                    //    for (int memItem : antB.getMemory()) {
-                    //        std::cout << memItem << " ";
-                    //    }
-                    //    std::cout << "\n";
-                    //}
-
-                    break; // Count only one interaction per ant per iteration
+                    break;
                 }
             }
             if (interactionOccurred) break;
         }
     }
 
-    // Decrement cooldown for all ants (if > 0)
     for (auto& ant : agents) {
         if (ant.getInteractionCooldown() > 0)
             ant.setInteractionCooldown(ant.getInteractionCooldown() - 1);
