@@ -103,6 +103,15 @@ void print_parameters(const SimParameters& params) {
     std::cout << "-----------------------------" << std::endl;
 }
 
+// Helper function to get the type of object an ant is carrying as an integer.
+int getLoadType(const std::shared_ptr<Object>& load) {
+    if (!load) return static_cast<int>(AIConfig::ObjectType::None); // 0
+    if (std::dynamic_pointer_cast<Food>(load)) return static_cast<int>(AIConfig::ObjectType::Food); // 1
+    if (std::dynamic_pointer_cast<Waste>(load)) return static_cast<int>(AIConfig::ObjectType::Waste); // 2
+    if (std::dynamic_pointer_cast<Egg>(load)) return static_cast<int>(AIConfig::ObjectType::Egg); // 3
+    return static_cast<int>(AIConfig::ObjectType::None);
+}
+
 // Function to write the header of the CSV data file.
 void write_csv_header(std::ofstream& file, const SimParameters& params) {
     file << "# Simulation Parameters:\n";
@@ -117,13 +126,13 @@ void write_csv_header(std::ofstream& file, const SimParameters& params) {
     file << "# Threshold Interval: " << params.threshold_interval << "\n";
     file << "# Prob Relu Low: " << params.prob_relu[0] << "\n";
     file << "# Prob Relu High: " << params.prob_relu[1] << "\n";
-    file << "Threshold,Iteration,Run,ClusterSize,InteractionCount\n";
+    file << "Threshold,Iteration,Run,ClusterSize,InteractionCount,AntID,AntPosX,AntPosY,AntLoad,AntMemory\n";
 }
 
 
 int main(int argc, char* argv[]) {
-    // Seed for random number generation
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    // *** BUG FIX: REMOVED a call to the non-thread-safe std::srand() ***
+    // std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     SimParameters params;
     parse_arguments(argc, argv, params);
@@ -162,7 +171,6 @@ int main(int argc, char* argv[]) {
 
         // Create a vector of string streams, one for each thread, to buffer results without locks.
         std::vector<std::stringstream> file_buffers(omp_get_max_threads());
-        std::vector<std::stringstream> console_buffers(omp_get_max_threads());
 
         // Parallelize the experimental runs for the current threshold
 #pragma omp parallel for schedule(dynamic, 1)
@@ -187,23 +195,38 @@ int main(int argc, char* argv[]) {
                     double avg_cluster_size = ground.averageClusterSize();
                     int interaction_count = ground.getInteractionCount();
 
-                    // Buffer data to the thread-local string stream. No lock needed.
-                    file_buffers[thread_id] << threshold << "," << i << "," << j + 1 << ","
-                        << avg_cluster_size << "," << interaction_count << "\n";
+                    const auto& agents = ground.getAgents();
+                    for (size_t ant_idx = 0; ant_idx < agents.size(); ++ant_idx) {
+                        const Ant& ant = agents[ant_idx];
+                        auto pos = ant.getPosition();
+                        int loadType = getLoadType(ant.getLoad());
+                        std::string memory_str = ant.getMemoryString();
 
-                    // Buffer console output to the thread-local string stream.
-                    console_buffers[thread_id] << "Experiment: " << j + 1
-                        << ", Iteration: " << i
-                        << ", Average Cluster Size: " << avg_cluster_size << "\n";
+                        // Buffer detailed data for this ant to the thread-local string stream
+                        file_buffers[thread_id] << threshold << "," << i << "," << j + 1 << ","
+                            << avg_cluster_size << "," << interaction_count << ","
+                            << ant_idx << "," << pos.first << "," << pos.second << ","
+                            << loadType << ",\"" << memory_str << "\"\n";
+                    }
+
+                    // Print progress immediately, protecting it with a critical section
+#pragma omp critical
+                    {
+                        // The 'endl' flushes the buffer, ensuring the message appears immediately.
+                        std::cout << "Threshold: " << threshold
+                            << ", Exp: " << j + 1
+                            << ", Iteration: " << i << "/" << params.num_iterations
+                            << ", Cluster Size: " << avg_cluster_size
+                            << ", Interactions: " << interaction_count << std::endl;
+                    }
                 }
             }
         }
 
         // --- Aggregation Step (Single Thread) ---
-        // Combine all buffered results and write to file and console at once.
+        // Combine all buffered file results and write to file at once.
         for (int i = 0; i < omp_get_max_threads(); ++i) {
             file << file_buffers[i].rdbuf();
-            std::cout << console_buffers[i].rdbuf();
         }
     }
 

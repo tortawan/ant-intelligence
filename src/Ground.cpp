@@ -306,12 +306,26 @@ std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_h
 }
 
 std::pair<int, int> Ground::getRandomPosition() {
+    // *** BUG FIX: Replaced non-thread-safe std::rand() with a thread-local generator ***
+    // Use a thread-local random number generator for thread safety.
+    // Each thread gets its own instance, seeded once from a true random source.
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 gen(rd());
+
     int size = static_cast<int>(possiblePositions.size());
-    int index = std::rand() % size;
+    if (size == 0) {
+        // Handle the case where there are no possible positions to avoid division by zero.
+        throw std::runtime_error("No possible positions available in Ground::getRandomPosition");
+    }
+    // Create a uniform distribution for the valid range of indices.
+    std::uniform_int_distribution<> distrib(0, size - 1);
+
+    int index = distrib(gen); // Use the thread-safe generator.
     auto it = possiblePositions.begin();
     std::advance(it, index);
     return it->first;
 }
+
 
 std::shared_ptr<Object> Ground::getRandomObject(
     const std::vector<std::shared_ptr<Object>>& keys,
