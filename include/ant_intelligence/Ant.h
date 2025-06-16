@@ -13,6 +13,7 @@
 #include <memory>
 #include <sstream>  // For memory serialization
 #include <string>   // For std::string
+#include <deque>    // OPTIMIZATION: Added for std::deque
 
  // Forward declarations
 class Object;
@@ -72,7 +73,7 @@ public:
     /** @brief Collection of visited grid positions */
     const std::unordered_set<std::pair<int, int>, pair_hash>& getVisitedPositions() const;
     /** @brief Sequence of recently seen objects */
-    const std::vector<int>& getMemory() const;
+    const std::deque<int>& getMemory() const; // OPTIMIZATION: Changed return type to const std::deque<int>&
     /** @brief Steps remaining before the ant can interact again */
     int getInteractionCooldown() const;
     /** @brief Previous movement direction */
@@ -133,9 +134,10 @@ private:
     // The object this ant is carrying
     std::shared_ptr<Object> load;
 
+    // OPTIMIZATION: Switched from std::vector to std::deque for efficient FIFO memory.
     // Memory: stores information about objects encountered
     // e.g. 1 for Food, 2 for Waste, 3 for Egg
-    std::vector<int> memory;
+    std::deque<int> memory;
 
     // Whether we record visited positions
     bool recordPath;

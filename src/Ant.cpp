@@ -37,11 +37,11 @@ void Ant::move(
             prevDirection = newDirection;
         }
         else {
+            auto prevPosition = position;
             // OPTIMIZATION: Replaced non-thread-safe std::rand() with the modern generator.
             std::uniform_int_distribution<> distrib(0, nextStepsList.size() - 1);
             position = nextStepsList[distrib(gen)];
 
-            auto prevPosition = position;
             auto dx = position.first - prevPosition.first;
             auto dy = position.second - prevPosition.second;
 
@@ -77,7 +77,8 @@ void Ant::setRecordPath(bool record) {
     recordPath = record;
 }
 
-const std::vector<int>& Ant::getMemory() const {
+// OPTIMIZATION: Changed return type to match deque
+const std::deque<int>& Ant::getMemory() const {
     return memory;
 }
 
@@ -150,13 +151,12 @@ void Ant::updateMemory(std::shared_ptr<Object> seenObject) {
     }
     if (objectType != AIConfig::ObjectType::None) {
         int objectTypeInt = static_cast<int>(objectType);
+
+        // OPTIMIZATION: Use efficient deque operations instead of std::rotate.
         if (memory.size() >= memorySize) {
-            std::rotate(memory.begin(), memory.begin() + 1, memory.end());
-            memory.back() = objectTypeInt;
+            memory.pop_front(); // Efficiently remove the oldest element.
         }
-        else {
-            memory.push_back(objectTypeInt);
-        }
+        memory.push_back(objectTypeInt); // Efficiently add the new element.
     }
 }
 

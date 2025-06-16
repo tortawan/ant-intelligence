@@ -27,6 +27,7 @@
 #include <string>
 #include <functional>
 #include <random> // Added for std::mt19937
+#include <deque>  // Added for std::deque
 
 // A simple helper struct to manage running tests and reporting results.
 struct TestSuite {
@@ -92,7 +93,7 @@ bool test_movement_inertia() {
 
 
 // --- Test Case 2: Ant Memory Logic ---
-// (This section is unchanged)
+// OPTIMIZATION: Updated to test the std::deque-based memory
 bool test_memory_fifo() {
     Ant testAnt({}, 0, 0, false, 3);
     auto food = std::make_shared<Food>();
@@ -100,9 +101,17 @@ bool test_memory_fifo() {
     auto egg = std::make_shared<Egg>();
     testAnt.updateMemory(food);
     testAnt.updateMemory(waste);
-    testAnt.updateMemory(egg);
-    testAnt.updateMemory(food);
-    if (testAnt.getMemory() != std::vector<int>{2, 3, 1}) return false;
+    testAnt.updateMemory(egg); // Memory is now full: {1, 2, 3}
+    testAnt.updateMemory(food); // Oldest (1) is pushed out, new (1) is added. Memory: {2, 3, 1}
+
+    // The expected state of the deque is {2, 3, 1}
+    std::deque<int> expected_memory = { 2, 3, 1 };
+    if (testAnt.getMemory() != expected_memory) {
+        std::cout << "  [FAIL] FIFO logic failed. Expected {2, 3, 1}, Got: ";
+        for (int i : testAnt.getMemory()) std::cout << i << " ";
+        std::cout << std::endl;
+        return false;
+    }
     return true;
 }
 
@@ -110,8 +119,16 @@ bool test_memory_ignores_nullptr() {
     Ant testAnt({}, 0, 0, false, 3);
     auto food = std::make_shared<Food>();
     testAnt.updateMemory(food);
-    testAnt.updateMemory(nullptr);
-    return testAnt.getMemory() == std::vector<int>{1};
+    testAnt.updateMemory(nullptr); // Should have no effect
+
+    std::deque<int> expected_memory = { 1 };
+    if (testAnt.getMemory() != expected_memory) {
+        std::cout << "  [FAIL] Nullptr test failed. Expected {1}, Got: ";
+        for (int i : testAnt.getMemory()) std::cout << i << " ";
+        std::cout << std::endl;
+        return false;
+    }
+    return true;
 }
 
 
@@ -127,7 +144,8 @@ bool run_single_interaction_test(int threshold, int num_matching_memories) {
         antB.updateMemory(std::make_shared<Food>());
     }
     int loadType = 1;
-    auto similarity = std::count(antB.getMemory().begin(), antB.getMemory().end(), loadType);
+    auto& antB_memory = antB.getMemory(); // Get reference to the deque
+    auto similarity = std::count(antB_memory.begin(), antB_memory.end(), loadType);
     return similarity >= threshold;
 }
 
