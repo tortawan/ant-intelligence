@@ -16,12 +16,14 @@ Ground::Ground(int width,
     int length,
     const std::vector<double>& probabilities,
     const std::vector<double>& probRelu,
-    int similarityThreshold)
+    int similarityThreshold,
+    int interactionCooldown) // Added cooldown to constructor
     : width(width)
     , length(length)
     , probabilities(probabilities)
     , probRelu(probRelu)
     , similarityThreshold(similarityThreshold)
+    , cooldown_duration(interactionCooldown) // Initialize new member
 {
     if (width <= 0 || length <= 0) {
         throw std::invalid_argument("Invalid grid dimensions");
@@ -412,7 +414,8 @@ void Ground::handleAntInteractions(int currentIteration) {
                 if (similarity >= similarityThreshold) {
                     interactionCounter++;
                     antA.setPrevDirection((antB.getPrevDirection() + 4) % AIConfig::NUM_DIRECTIONS);
-                    antA.setInteractionCooldown(20);
+                    // Use the new configurable cooldown duration
+                    antA.setInteractionCooldown(cooldown_duration);
                     interactionOccurred = true;
                     break;
                 }

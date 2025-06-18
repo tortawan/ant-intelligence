@@ -7,6 +7,7 @@
 
 #include "ant_intelligence/Ant.h"
 #include "ant_intelligence/Objects.h"
+#include "ant_intelligence/Config.h" // Added to get the default cooldown value
 #include <vector>
 #include <unordered_map>
 #include <memory>
@@ -31,12 +32,15 @@ public:
      * @param probabilities       Movement probabilities for ants
      * @param probRelu            Range used in interaction probability
      * @param similarityThreshold Number of matching memory items needed for interaction
+     * @param interactionCooldown Number of steps an ant must wait after an interaction
      */
     Ground(int width,
         int length,
-        const std::vector<double>& probabilities = std::vector<double>(8, 1.0 / 8),
-        const std::vector<double>& probRelu = { 0.0, 0.5 },
-        int similarityThreshold = 2);
+        const std::vector<double>& probabilities,
+        const std::vector<double>& probRelu,
+        int similarityThreshold,
+        // FIX: Added a default value to the constructor for backward compatibility
+        int interactionCooldown = AIConfig::DEFAULT_INTERACTION_COOLDOWN);
 
     /** @brief Create an ant and place it randomly on the ground */
     void addAnt(int memorySize = 20);
@@ -75,7 +79,7 @@ private:
     std::vector<double> probabilities;
     std::vector<double> probRelu;
     int similarityThreshold;
-
+    int cooldown_duration;
     int interactionCounter = 0;  // Counter for successful interactions
 
     /** @brief Pre-compute neighbour cells for each grid position */
