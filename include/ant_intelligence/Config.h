@@ -30,7 +30,7 @@ namespace AIConfig {
     constexpr int DEFAULT_GROUND_LENGTH = 100;
     constexpr int DEFAULT_NUM_ANTS = 500;
     constexpr int DEFAULT_NUM_EXPERIMENTS = 5;
-    constexpr int DEFAULT_ITERATIONS = 1000001;
+    constexpr int DEFAULT_ITERATIONS = 20001;
     constexpr int DEFAULT_MEMORY_SIZE = 20;
     constexpr int DEFAULT_THRESHOLD_START = 0;
     constexpr int DEFAULT_THRESHOLD_END = 20;
