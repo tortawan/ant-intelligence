@@ -38,15 +38,12 @@ void Ant::move(
         }
         else {
             auto prevPosition = position;
-            // FIX: Added static_cast to resolve the C4267 size_t to int conversion warning.
             std::uniform_int_distribution<> distrib(0, static_cast<int>(nextStepsList.size() - 1));
             position = nextStepsList[distrib(gen)];
 
             auto dx = position.first - prevPosition.first;
             auto dy = position.second - prevPosition.second;
 
-            // Handle potential issue where the new position is the same as the old one.
-            // This can happen if an ant is completely trapped.
             if (invMovementDict.count({ dx, dy })) {
                 prevDirection = invMovementDict.at(std::make_pair(dx, dy));
             }
@@ -82,7 +79,6 @@ void Ant::setRecordPath(bool record) {
     recordPath = record;
 }
 
-// OPTIMIZATION: Changed return type to match deque
 const std::deque<int>& Ant::getMemory() const {
     return memory;
 }
@@ -121,8 +117,9 @@ void Ant::updateMovementDict() {
 }
 
 int Ant::getRandomDirection() {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    // FIX: Made the random number generator thread-local for safety in parallel execution.
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(
         0,
         static_cast<int>(AIConfig::Direction::NorthWest));
@@ -134,8 +131,9 @@ int Ant::getRandomWeightedDirection(const std::vector<double>& probabilities, in
     int size = static_cast<int>(probabilities.size());
     int n = prevDirection % size;
     std::rotate(shifted.rbegin(), shifted.rbegin() + n, shifted.rend());
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    // FIX: Made the random number generator thread-local for safety in parallel execution.
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 gen(rd());
     std::discrete_distribution<> distribution(shifted.begin(), shifted.end());
     return distribution(gen);
 }
@@ -157,15 +155,13 @@ void Ant::updateMemory(std::shared_ptr<Object> seenObject) {
     if (objectType != AIConfig::ObjectType::None) {
         int objectTypeInt = static_cast<int>(objectType);
 
-        // OPTIMIZATION: Use efficient deque operations instead of std::rotate.
         if (memory.size() >= memorySize) {
-            memory.pop_front(); // Efficiently remove the oldest element.
+            memory.pop_front();
         }
-        memory.push_back(objectTypeInt); // Efficiently add the new element.
+        memory.push_back(objectTypeInt);
     }
 }
 
-// New: Serialize memory to a comma-separated string.
 std::string Ant::getMemoryString() const {
     std::stringstream ss;
     for (int mem : memory) {

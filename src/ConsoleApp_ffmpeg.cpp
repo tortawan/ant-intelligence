@@ -137,8 +137,7 @@ int main(int argc, char* argv[]) {
         {nullptr,                  0.85}
     };
 
-    // --- FIX: Robust File Handling Step 1: Write header and close immediately.
-    // This creates/clears the file and ensures the header is written correctly.
+    // Robust File Handling Step 1: Write header and close immediately.
     std::ofstream header_writer(params.csv_filename, std::ios_base::trunc);
     if (!header_writer.is_open()) {
         std::cerr << "Error: Could not open the output file '" << params.csv_filename << "' for writing header." << std::endl;
@@ -156,19 +155,16 @@ int main(int argc, char* argv[]) {
 
             std::cout << "Running experiments for Cooldown = " << cooldown << ", Threshold = " << threshold << "..." << std::endl;
 
-            // Clear temporary files before each parameter set to prevent data corruption.
-            for (int i = 0; i < omp_get_max_threads(); ++i) {
-                const std::string temp_filename_to_clear = "temp_data_" + std::to_string(i) + ".csv";
-                std::ofstream ofs(temp_filename_to_clear, std::ofstream::trunc);
-                ofs.close();
-            }
-
             // Parallelize the experimental runs for the current parameter combination
 #pragma omp parallel for schedule(dynamic, 1)
             for (int j = 0; j < params.num_experiments; ++j) {
-                int thread_id = omp_get_thread_num();
-                const std::string temp_filename = "temp_data_" + std::to_string(thread_id) + ".csv";
-                std::ofstream temp_file(temp_filename, std::ios_base::app);
+                // ? FIX: Create a unique temporary filename for each experiment run.
+                // This prevents race conditions where threads could overwrite each other's temp files.
+                std::string temp_filename = "temp_data_C" + std::to_string(cooldown)
+                    + "_T" + std::to_string(threshold)
+                    + "_R" + std::to_string(j + 1) + ".csv";
+
+                std::ofstream temp_file(temp_filename);
 
                 // Initialize the simulation environment
                 Ground ground(params.width, params.length, prob, params.prob_relu, threshold, cooldown);
@@ -203,17 +199,24 @@ int main(int argc, char* argv[]) {
                 temp_file.close();
             }
 
-            // --- FIX: Robust File Handling Step 2: Open in append mode, aggregate data, and close immediately.
+            // Robust File Handling Step 2: Open in append mode, aggregate data, and close immediately.
             std::ofstream aggregator(params.csv_filename, std::ios_base::app);
             if (!aggregator.is_open()) {
                 std::cerr << "Error: Could not open the output file '" << params.csv_filename << "' for appending results." << std::endl;
                 continue; // Skip to the next loop iteration
             }
-            for (int i = 0; i < omp_get_max_threads(); ++i) {
-                const std::string temp_filename = "temp_data_" + std::to_string(i) + ".csv";
+
+            // ? FIX: The aggregation loop now reconstructs the unique filenames to read and append them.
+            for (int run = 1; run <= params.num_experiments; ++run) {
+                std::string temp_filename = "temp_data_C" + std::to_string(cooldown)
+                    + "_T" + std::to_string(threshold)
+                    + "_R" + std::to_string(run) + ".csv";
+
                 std::ifstream temp_file(temp_filename);
                 if (temp_file.is_open()) {
-                    aggregator << temp_file.rdbuf();
+                    if (temp_file.peek() != std::ifstream::traits_type::eof()) {
+                        aggregator << temp_file.rdbuf();
+                    }
                     temp_file.close();
                     remove(temp_filename.c_str());
                 }

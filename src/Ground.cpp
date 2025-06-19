@@ -64,19 +64,17 @@ void Ground::addObject(const std::unordered_map<std::shared_ptr<Object>, double>
 }
 
 void Ground::moveAnts() {
-    // OPTIMIZATION: Use a thread-local generator for thread-safe random numbers.
     thread_local static std::random_device rd;
     thread_local static std::mt19937 gen(rd());
 
     for (auto& ant : agents) {
-        // Pass the generator to the move function.
         ant.move(possiblePositions, probabilities, gen);
     }
 }
 
 void Ground::assignWork() {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 gen(rd());
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
     for (auto& ant : agents) {
@@ -85,7 +83,6 @@ void Ground::assignWork() {
         auto groundObject = (it != obj.end()) ? it->second : nullptr;
         auto carried = ant.getLoad();
 
-        // Update memory with the object the ant sees on the ground
         ant.updateMemory(groundObject);
 
         if (!carried) {
@@ -97,13 +94,11 @@ void Ground::assignWork() {
                 if (randVal > pickProb) {
                     ant.setLoad(groundObject);
                     obj[pos] = nullptr;
-                    // Update memory again when picking up an object
                     ant.updateMemory(groundObject);
                 }
             }
         }
         else {
-            // Update memory with the object the ant is carrying
             ant.updateMemory(carried);
 
             int neighborCount = countNeighbors(pos, carried);
@@ -114,13 +109,11 @@ void Ground::assignWork() {
                 if (!groundObject) {
                     obj[pos] = carried;
                     ant.setLoad(nullptr);
-                    // Update memory when dropping an object
                     ant.updateMemory(carried);
                 }
                 else {
                     obj[pos] = carried;
                     ant.setLoad(groundObject);
-                    // Update memory when swapping objects
                     ant.updateMemory(carried);
                     ant.updateMemory(groundObject);
                 }
@@ -288,7 +281,6 @@ const std::vector<Ant>& Ground::getAgents() const {
 }
 
 std::unordered_map<std::pair<int, int>, std::vector<std::pair<int, int>>, pair_hash> Ground::getPossiblePositions() {
-    // This defines the 8 directions relative to a central point.
     std::vector<std::pair<int, int>> neighborOffsets = {
         { 0, -1}, { 1, -1}, { 1,  0}, { 1,  1},
         { 0,  1}, {-1,  1}, {-1,  0}, {-1, -1}
@@ -333,8 +325,9 @@ std::shared_ptr<Object> Ground::getRandomObject(
     const std::vector<std::shared_ptr<Object>>& keys,
     const std::vector<double>& values
 ) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    // FIX: Made the random number generator thread-local for safety in parallel execution.
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 gen(rd());
     std::discrete_distribution<> dist(values.begin(), values.end());
 
     int idx = dist(gen);
@@ -414,7 +407,6 @@ void Ground::handleAntInteractions(int currentIteration) {
                 if (similarity >= similarityThreshold) {
                     interactionCounter++;
                     antA.setPrevDirection((antB.getPrevDirection() + 4) % AIConfig::NUM_DIRECTIONS);
-                    // Use the new configurable cooldown duration
                     antA.setInteractionCooldown(cooldown_duration);
                     interactionOccurred = true;
                     break;
