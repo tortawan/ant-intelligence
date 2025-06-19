@@ -38,8 +38,8 @@ void Ant::move(
         }
         else {
             auto prevPosition = position;
-            // OPTIMIZATION: Replaced non-thread-safe std::rand() with the modern generator.
-            std::uniform_int_distribution<> distrib(0, nextStepsList.size() - 1);
+            // FIX: Added static_cast to resolve the C4267 size_t to int conversion warning.
+            std::uniform_int_distribution<> distrib(0, static_cast<int>(nextStepsList.size() - 1));
             position = nextStepsList[distrib(gen)];
 
             auto dx = position.first - prevPosition.first;
@@ -60,6 +60,11 @@ void Ant::move(
 std::pair<int, int> Ant::getPosition() const {
     return position;
 }
+
+void Ant::setPosition(std::pair<int, int> new_position) {
+    position = new_position;
+}
+
 
 std::shared_ptr<Object> Ant::getLoad() const {
     return load;

@@ -59,7 +59,6 @@ class SimulationLauncherApp(bs.Window):
 
     def create_controls(self, parent_frame):
         """Creates the input fields and buttons for simulation control."""
-        # This function's content remains largely the same
         path_frame = bs.Labelframe(parent_frame, text="Executable Configuration", padding=10)
         path_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -79,8 +78,11 @@ class SimulationLauncherApp(bs.Window):
             "ants": ("Number of Ants", "500"), "experiments": ("Number of Experiments", "5"),
             "iterations": ("Iterations per Exp.", "50001"), "memory_size": ("Ant Memory Size", "20"),
             "threshold_start": ("Threshold Start", "0"), "threshold_end": ("Threshold End", "20"),
-            "threshold_interval": ("Threshold Interval", "5"), "prob_relu_low": ("Prob. ReLU Low", "0.3"),
-            "prob_relu_high": ("Prob. ReLU High", "0.7"),
+            "threshold_interval": ("Threshold Interval", "5"), 
+            # --- NEW: Added cooldown parameters to the GUI ---
+            "cooldown_start": ("Cooldown Start", "0"), "cooldown_end": ("Cooldown End", "20"),
+            "cooldown_interval": ("Cooldown Interval", "5"),
+            "prob_relu_low": ("Prob. ReLU Low", "0.3"), "prob_relu_high": ("Prob. ReLU High", "0.7"),
         }
 
         row_num = 0
@@ -107,7 +109,6 @@ class SimulationLauncherApp(bs.Window):
 
     def create_results_display(self, parent_frame):
         """Creates the table view for displaying CSV data."""
-        # This function's content remains the same
         ttk.Label(parent_frame, text="Simulation Results", font="-weight bold").pack(anchor="w")
         tree_container = ttk.Frame(parent_frame)
         tree_container.pack(fill=tk.BOTH, expand=True, pady=5)
@@ -151,7 +152,6 @@ class SimulationLauncherApp(bs.Window):
     def start_simulation_thread(self):
         self.run_button.config(state=tk.DISABLED)
         self.status_var.set("Running simulation... please wait.")
-        # Clear previous console output before starting
         self.console_output.config(state='normal')
         self.console_output.delete(1.0, tk.END)
         self.console_output.config(state='disabled')
@@ -184,10 +184,8 @@ class SimulationLauncherApp(bs.Window):
             return
 
         try:
-            # Use Popen to run the process and capture output in real-time
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             
-            # Read the output line by line as it is generated
             for line in iter(process.stdout.readline, ''):
                 self.log_queue.put(line)
 
@@ -200,7 +198,7 @@ class SimulationLauncherApp(bs.Window):
             else:
                 self.log_queue.put("\n--- SIMULATION FINISHED SUCCESSFULLY ---\n")
                 self.status_var.set("Simulation finished successfully. Loading results...")
-                self.load_results_from_csv() # Automatically load results
+                self.load_results_from_csv() 
                 self.status_var.set("Ready.")
 
         except FileNotFoundError:
@@ -220,6 +218,7 @@ class SimulationLauncherApp(bs.Window):
             return
         try:
             df = pd.read_csv(csv_path)
+            # The results table is cleared and rebuilt dynamically from the CSV columns
             for item in self.results_tree.get_children(): self.results_tree.delete(item)
             self.results_tree["columns"] = list(df.columns)
             self.results_tree["show"] = "headings"

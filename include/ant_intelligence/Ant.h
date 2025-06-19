@@ -90,6 +90,8 @@ public:
     void setInteractionCooldown(int cooldown);
     /** @brief Explicitly set the previous movement direction */
     void setPrevDirection(int newDir);
+    /** @brief Explicitly set the ant's position */
+    void setPosition(std::pair<int, int> new_position);
     ///@}
 
     /**
