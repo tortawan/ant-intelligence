@@ -36,7 +36,7 @@ namespace AIConfig {
     // Default sweep for similarity threshold
     constexpr int DEFAULT_THRESHOLD_START = 0;
     constexpr int DEFAULT_THRESHOLD_END = 20;
-    constexpr int DEFAULT_THRESHOLD_INTERVAL = 5;
+    constexpr int DEFAULT_THRESHOLD_INTERVAL = 10;
 
     // Default value for interaction cooldown (used if not sweeping)
     constexpr int DEFAULT_INTERACTION_COOLDOWN = 20;
