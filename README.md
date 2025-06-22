@@ -6,6 +6,34 @@ This repository showcases **Ant Intelligence**, a sophisticated simulation proje
 
 At its heart, this project simulates ant-like agents navigating a two-dimensional environment. The agents follow straightforward rules, resulting in complex self-organizing behaviors, notably the clustering of diverse objects such as food, waste, and eggs. This project explores how simple localized interactions and minimal memory can yield intricate large-scale patterns, essential in the fields of Artificial Life and Swarm Intelligence.
 
+## Project Structure
+
+The project directory is organized as follows:
+
+```
+ant-intelligence/
+├── src/
+│   ├── Ant.cpp
+│   ├── ConsoleApp_ffmpeg.cpp
+│   └── Ground.cpp
+├── include/
+│   └── ant_intelligence/
+│       ├── Ant.h
+│       ├── Config.h
+│       ├── Ground.h
+│       ├── Objects.h
+│       └── Utils.h
+├── ConsoleApp_controller.py
+├── ConsoleApp_ffmpeg.sln
+├── tests/
+│   └── test_ant_movement.cpp
+├── ConsoleApp_ffmpeg/
+│   ├── cluster_evolution_plot.png
+│   └── ground_data.csv
+└── AntTest/
+    └── AntTest.cpp
+```
+
 ## Key Features
 
 - **High-Performance Core**: Engineered with modern C++ and parallelized using OpenMP for efficiency and scalability.
