@@ -8,6 +8,7 @@
  * 'interactionCooldown' values to test their effect on object clustering.
  *
  * The results are logged to a CSV file for later analysis.
+ * If enabled, it also generates an MP4 video of the simulation.
  */
 
 #define NOMINMAX
@@ -34,6 +35,11 @@
 #include <windows.h>
 #endif
 
+ // Conditionally include OpenCV headers only if this is NOT a test build.
+#ifndef IS_TEST_BUILD
+#include <opencv2/opencv.hpp>
+#endif
+
  // A simple struct to hold all simulation parameters.
 struct SimParameters {
     int width = AIConfig::DEFAULT_GROUND_WIDTH;
@@ -49,7 +55,7 @@ struct SimParameters {
     int cooldown_end = AIConfig::DEFAULT_COOLDOWN_END;
     int cooldown_interval = AIConfig::DEFAULT_COOLDOWN_INTERVAL;
     std::vector<double> prob_relu = { AIConfig::DEFAULT_PROB_RELU[0], AIConfig::DEFAULT_PROB_RELU[1] };
-    bool enable_visual = false;
+    bool enable_visual = AIConfig::DEFAULT_VIDEO_ENABLED;
     std::string csv_filename = "ground_data.csv";
 };
 
@@ -158,8 +164,7 @@ int main(int argc, char* argv[]) {
             // Parallelize the experimental runs for the current parameter combination
 #pragma omp parallel for schedule(dynamic, 1)
             for (int j = 0; j < params.num_experiments; ++j) {
-                // ? FIX: Create a unique temporary filename for each experiment run.
-                // This prevents race conditions where threads could overwrite each other's temp files.
+                // Create a unique temporary filename for each experiment run.
                 std::string temp_filename = "temp_data_C" + std::to_string(cooldown)
                     + "_T" + std::to_string(threshold)
                     + "_R" + std::to_string(j + 1) + ".csv";
@@ -173,11 +178,44 @@ int main(int argc, char* argv[]) {
                     ground.addAnt(params.memory_size);
                 }
 
+                // === VIDEO WRITER SETUP (START) ===
+#ifndef IS_TEST_BUILD
+                cv::VideoWriter video;
+                if (params.enable_visual) {
+                    // Create a unique video filename for the experiment
+                    std::string video_filename = "simulation_C" + std::to_string(cooldown)
+                        + "_T" + std::to_string(threshold)
+                        + "_R" + std::to_string(j + 1) + ".mp4";
+                    int scale = 6; // Must match the scale used in showGround()
+                    cv::Size frame_size(params.length * scale, params.width * scale);
+                    // Use 'm', 'p', '4', 'v' for MP4 file format
+                    video.open(video_filename, cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 30, frame_size, true);
+                    if (!video.isOpened()) {
+#pragma omp critical
+                        {
+                            std::cerr << "Error: Could not open video file for writing: " << video_filename << std::endl;
+                        }
+                    }
+                }
+#endif
+                // === VIDEO WRITER SETUP (END) ===
+
+
                 // Run the simulation
                 for (int i = 0; i < params.num_iterations; ++i) {
                     ground.moveAnts();
                     ground.assignWork();
                     ground.handleAntInteractions(i);
+
+                    // === SHOW/SAVE FRAME (START) ===
+#ifndef IS_TEST_BUILD
+                    if (params.enable_visual && video.isOpened()) {
+                        // The window name is provided, and the video writer is passed
+                        ground.showGround("Ant Simulation", video);
+                    }
+#endif
+                    // === SHOW/SAVE FRAME (END) ===
+
 
                     if (i % 10000 == 0) {
                         double avg_cluster_size = ground.averageClusterSize();
@@ -197,6 +235,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 temp_file.close();
+                // VideoWriter is automatically released by its destructor when it goes out of scope.
             }
 
             // Robust File Handling Step 2: Open in append mode, aggregate data, and close immediately.
@@ -206,7 +245,7 @@ int main(int argc, char* argv[]) {
                 continue; // Skip to the next loop iteration
             }
 
-            // ? FIX: The aggregation loop now reconstructs the unique filenames to read and append them.
+            // The aggregation loop now reconstructs the unique filenames to read and append them.
             for (int run = 1; run <= params.num_experiments; ++run) {
                 std::string temp_filename = "temp_data_C" + std::to_string(cooldown)
                     + "_T" + std::to_string(threshold)
