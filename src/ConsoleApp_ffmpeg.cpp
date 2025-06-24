@@ -189,7 +189,7 @@ int main(int argc, char* argv[]) {
                     int scale = 6; // Must match the scale used in showGround()
                     cv::Size frame_size(params.length * scale, params.width * scale);
                     // Use 'm', 'p', '4', 'v' for MP4 file format
-                    video.open(video_filename, cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 30, frame_size, true);
+                    video.open(video_filename, cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 120, frame_size, true);
                     if (!video.isOpened()) {
 #pragma omp critical
                         {

@@ -26,11 +26,11 @@ namespace AIConfig {
     constexpr int NUM_DIRECTIONS = 8;
 
     // Default simulation parameters
-    constexpr int DEFAULT_GROUND_WIDTH = 100;
-    constexpr int DEFAULT_GROUND_LENGTH = 100;
-    constexpr int DEFAULT_NUM_ANTS = 500;
+    constexpr int DEFAULT_GROUND_WIDTH = 50;
+    constexpr int DEFAULT_GROUND_LENGTH = 50;
+    constexpr int DEFAULT_NUM_ANTS = 50;
     constexpr int DEFAULT_NUM_EXPERIMENTS = 1;
-    constexpr int DEFAULT_ITERATIONS = 300001; // Reduced for quicker testing
+    constexpr int DEFAULT_ITERATIONS = 30001; // Reduced for quicker testing
     constexpr int DEFAULT_MEMORY_SIZE = 20;
 
     // Default sweep for similarity threshold
@@ -39,7 +39,7 @@ namespace AIConfig {
     constexpr int DEFAULT_THRESHOLD_INTERVAL = 15;
 
     // Default value for interaction cooldown (used if not sweeping)
-    constexpr int DEFAULT_INTERACTION_COOLDOWN = 20;
+    constexpr int DEFAULT_INTERACTION_COOLDOWN = 5;
 
     // --- NEW: Default sweep for interaction cooldown ---
     constexpr int DEFAULT_COOLDOWN_START = 5;
