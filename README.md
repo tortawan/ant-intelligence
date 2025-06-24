@@ -1,5 +1,5 @@
 # Ant Intelligence: A Swarm Simulation Project
-
+![](/images/and_working.gif)
 This repository showcases **Ant Intelligence**, a sophisticated simulation project I developed to investigate emergent behavior and swarm intelligence principles. The system integrates a high-performance C++ simulation core with a user-friendly Python GUI for intuitive experiment control and comprehensive data analysis.
 
 ## Overview
